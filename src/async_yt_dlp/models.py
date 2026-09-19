@@ -304,6 +304,16 @@ class DownloadResult:
         return self.filepath.name
 
     @property
+    def title(self) -> str:
+        """Название медиаресурса."""
+        return self.info.title
+
+    @property
+    def duration(self) -> float | None:
+        """Длительность медиаресурса в секундах."""
+        return self.info.duration
+
+    @property
     def exists(self) -> bool:
         """Существует ли файл на диске."""
         return self.filepath.exists()

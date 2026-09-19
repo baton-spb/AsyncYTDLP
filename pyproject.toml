@@ -31,7 +31,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ffmpeg = [
+    "async-ffmpeg>=0.1.0",
+]
 full = [
+    "async-ffmpeg>=0.1.0",
     "brotli>=1.0.0",
     "certifi>=2024.01.01",
     "curl-cffi>=0.5.10",
@@ -56,6 +60,9 @@ Homepage = "http://localhost:3000/6aton/AsyncYT-DLP"
 Documentation = "http://localhost:3000/6aton/AsyncYT-DLP#readme"
 Repository = "ssh://git@localhost:2222/6aton/AsyncYT-DLP.git"
 Issues = "http://localhost:3000/6aton/AsyncYT-DLP/issues"
+
+[tool.uv.sources]
+async-ffmpeg = { path = "../AsyncFFmpeg" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/async_yt_dlp"]
