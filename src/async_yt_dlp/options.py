@@ -14,6 +14,7 @@ from pathlib import Path
 
 from async_yt_dlp._constants import DEFAULT_OUTPUT_TEMPLATE
 from async_yt_dlp._logging import redact_options
+from async_yt_dlp.format import FormatSelector
 
 
 @dataclass(frozen=True)
@@ -28,7 +29,7 @@ class YTDLPOptions:
     """
 
     # Выбор формата медиа
-    format: str | None = None
+    format: str | FormatSelector | None = None
     format_sort: list[str] | str | None = None
     format_sort_force: bool | None = None
 
@@ -127,7 +128,7 @@ class YTDLPOptions:
 
         # Выбор формата
         if self.format is not None:
-            params["format"] = self.format
+            params["format"] = str(self.format)
         if self.format_sort is not None:
             params["format_sort"] = (
                 self.format_sort if isinstance(self.format_sort, list) else [self.format_sort]

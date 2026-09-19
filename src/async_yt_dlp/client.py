@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from enum import StrEnum
 from pathlib import Path
@@ -26,7 +27,7 @@ from async_yt_dlp.exceptions import (
     AsyncYTDLPError,
     LifecycleError,
 )
-from async_yt_dlp.manager import DownloadManager
+from async_yt_dlp.manager import DownloadJob, DownloadManager
 from async_yt_dlp.models import DownloadResult, MediaInfo
 from async_yt_dlp.options import YTDLPOptions
 from async_yt_dlp.progress import ProgressBridge, ProgressEvent
@@ -87,6 +88,11 @@ class AsyncYTDLP:
     def is_closed(self) -> bool:
         """Закрыт ли клиент для новых операций."""
         return self._state in (ClientState.CLOSING, ClientState.CLOSED)
+
+    @property
+    def manager(self) -> DownloadManager:
+        """Экземпляр менеджера параллельности и очереди задач."""
+        return self._manager
 
     async def __aenter__(self) -> Self:
         """Вход в контекстный менеджер (переводит клиент в состояние RUNNING)."""
@@ -241,6 +247,12 @@ class AsyncYTDLP:
                 _consume_progress(), name=f"progress-{job_id or 'direct'}"
             )
 
+        job = DownloadJob(
+            url=validated_url,
+            job_id=job_id or str(uuid.uuid4()),
+            options=effective_opts,
+        )
+
         async def _op() -> tuple[dict[str, object], float]:
             """Выполняет вызов бэкенда для скачивания медиа-ресурса."""
             return await self._backend.download(
@@ -248,11 +260,11 @@ class AsyncYTDLP:
                 params,
                 progress_bridge=bridge,
                 extra_info=extra_info,
-                job_id=job_id,
+                job_id=job.job_id,
             )
 
         try:
-            raw_info, elapsed = await self._manager.run_operation(_op, job_id=job_id)
+            raw_info, elapsed = await self._manager.run_operation(_op, job_id=job.job_id, job=job)
         finally:
             if consumer_task is not None:
                 await consumer_task
@@ -392,6 +404,112 @@ class AsyncYTDLP:
 
         # COLLECT или FAIL_FAST (если без исключений)
         return [r for r in results if r is not None]
+
+    async def download_playlist(
+        self,
+        url: str,
+        *,
+        options: YTDLPOptions | None = None,
+        start: int | None = None,
+        end: int | None = None,
+        max_items: int | None = None,
+        on_progress: Callable[[ProgressEvent], object] | None = None,
+        on_error: ErrorPolicy = ErrorPolicy.COLLECT,
+    ) -> AsyncIterator[DownloadResult | AsyncYTDLPError]:
+        """Асинхронный генератор для последовательной загрузки элементов плейлиста.
+
+        Извлекает метаданные плейлиста, фильтрует диапазон записей и последовательно
+        скачивает каждое медиа, отдавая результат по мере готовности через `yield`.
+
+        Args:
+            url: URL плейлиста, канала или отдельного видео.
+            options: Опции yt-dlp для загрузки элементов.
+            start: Начальный индекс элемента (1-индексированный, как в yt-dlp).
+            end: Конечный индекс элемента (включительно, 1-индексированный).
+            max_items: Максимальное количество элементов для скачивания.
+            on_progress: Опциональный callback прогресса для каждого скачивания.
+            on_error: Стратегия обработки ошибок (FAIL_FAST, COLLECT, SKIP).
+
+        Yields:
+            Объекты `DownloadResult` или исключения `AsyncYTDLPError` (при политике COLLECT).
+
+        Raises:
+            AsyncYTDLPError: При первой ошибке, если выбрана политика `FAIL_FAST`.
+        """
+        self._ensure_running()
+        extract_opts = (options or self._default_options).merge(
+            YTDLPOptions(extract_flat="in_playlist", skip_download=True)
+        )
+        info = await self.extract_info(url, options=extract_opts)
+
+        entries: list[MediaInfo] = (
+            list(info.entries) if info.is_playlist and info.entries else [info]
+        )
+
+        # Применение диапазона start / end (1-based index)
+        start_idx = max(0, start - 1) if (start is not None and start > 0) else 0
+        end_idx = end if (end is not None and end > 0) else None
+        selected = entries[start_idx:end_idx]
+
+        if max_items is not None and max_items > 0:
+            selected = selected[:max_items]
+
+        for item in selected:
+            item_url = (
+                item.webpage_url
+                or (f"https://www.youtube.com/watch?v={item.id}" if item.id else None)
+                or url
+            )
+            try:
+                result = await self.download(
+                    item_url,
+                    options=options,
+                    on_progress=on_progress,
+                    job_id=f"pl-{item.id or 'item'}",
+                )
+                yield result
+            except AsyncYTDLPError as err:
+                if on_error == ErrorPolicy.FAIL_FAST:
+                    raise
+                if on_error == ErrorPolicy.COLLECT:
+                    yield err
+            except Exception as unk_err:
+                from async_yt_dlp.exceptions import map_ytdlp_error
+
+                mapped = map_ytdlp_error(unk_err, url=item_url)
+                if on_error == ErrorPolicy.FAIL_FAST:
+                    raise mapped from unk_err
+                if on_error == ErrorPolicy.COLLECT:
+                    yield mapped
+
+    async def download_playlist_all(
+        self,
+        url: str,
+        *,
+        options: YTDLPOptions | None = None,
+        start: int | None = None,
+        end: int | None = None,
+        max_items: int | None = None,
+        on_progress: Callable[[ProgressEvent], object] | None = None,
+        on_error: ErrorPolicy = ErrorPolicy.COLLECT,
+    ) -> list[DownloadResult | AsyncYTDLPError]:
+        """Скачивает все элементы плейлиста и возвращает полный список результатов.
+
+        Удобная обертка над генератором `download_playlist` для сценариев,
+        где требуется дождаться завершения всего пакета.
+        """
+        results: list[DownloadResult | AsyncYTDLPError] = []
+        async for res in self.download_playlist(
+            url,
+            options=options,
+            start=start,
+            end=end,
+            max_items=max_items,
+            on_progress=on_progress,
+            on_error=on_error,
+        ):
+            results.append(res)
+        return results
 
     async def check_dependencies(self, *, force_refresh: bool = False) -> DependencyInfo:
         """Проверяет состояние системных зависимостей (yt-dlp, ffmpeg, ffprobe, JS engines)."""

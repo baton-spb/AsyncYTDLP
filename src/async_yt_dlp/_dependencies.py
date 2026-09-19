@@ -42,6 +42,7 @@ class DependencyInfo:
     has_crypto: bool = False
     has_mutagen: bool = False
     has_ejs: bool = False
+    has_async_ffmpeg: bool = False
 
     @property
     def has_ffmpeg_suite(self) -> bool:
@@ -134,6 +135,32 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
                 return c
         return None
 
+    # Попытка обнаружения через async_ffmpeg (если установлен)
+    has_async_ffmpeg = importlib.util.find_spec("async_ffmpeg") is not None
+    if has_async_ffmpeg:
+        try:
+            from async_ffmpeg import find_ffmpeg as aff_find_ffmpeg
+            from async_ffmpeg import find_ffprobe as aff_find_ffprobe
+
+            if not ffmpeg_bin:
+                try:
+                    found_ff = aff_find_ffmpeg(custom_ffmpeg_location)
+                    if found_ff.is_file():
+                        ffmpeg_bin = found_ff
+                except Exception:
+                    pass
+
+            if not ffprobe_bin:
+                try:
+                    found_fp = aff_find_ffprobe(custom_ffmpeg_location)
+                    if found_fp.is_file():
+                        ffprobe_bin = found_fp
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # Стандартный поиск через PATH и каталоги Windows
     if not ffmpeg_bin:
         found_ffmpeg = shutil.which("ffmpeg")
         ffmpeg_bin = Path(found_ffmpeg) if found_ffmpeg else _find_windows_candidates("ffmpeg.exe")
@@ -146,7 +173,15 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
 
     ffmpeg_ver: str | None = None
     if ffmpeg_bin:
-        ffmpeg_ver = _get_binary_version(ffmpeg_bin)
+        if has_async_ffmpeg:
+            try:
+                from async_ffmpeg import get_binary_version_sync
+
+                ffmpeg_ver = get_binary_version_sync(ffmpeg_bin)
+            except Exception:
+                ffmpeg_ver = _get_binary_version(ffmpeg_bin)
+        else:
+            ffmpeg_ver = _get_binary_version(ffmpeg_bin)
 
     # 3. Поиск JS runtimes
     found_runtimes: list[str] = []
@@ -175,6 +210,7 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
         has_crypto=has_crypto,
         has_mutagen=has_mutagen,
         has_ejs=has_ejs,
+        has_async_ffmpeg=has_async_ffmpeg,
     )
 
 

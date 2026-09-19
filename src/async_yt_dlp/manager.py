@@ -75,6 +75,7 @@ class DownloadManager:
         self._queue_size = queue_size
         self._semaphore = asyncio.Semaphore(max_concurrency)
         self._active_tasks: set[asyncio.Task[object]] = set()
+        self._active_jobs: dict[str, DownloadJob] = {}
         self._waiting_count: int = 0
         self._is_closed: bool = False
         self._shutdown_event = asyncio.Event()
@@ -99,11 +100,21 @@ class DownloadManager:
         """Закрыт ли менеджер для приема новых задач."""
         return self._is_closed
 
+    @property
+    def active_jobs(self) -> tuple[DownloadJob, ...]:
+        """Кортеж текущих выполняющихся задач (снапшот)."""
+        return tuple(self._active_jobs.values())
+
+    def get_job(self, job_id: str) -> DownloadJob | None:
+        """Возвращает экземпляр задачи по ее идентификатору, если она активна."""
+        return self._active_jobs.get(job_id)
+
     async def run_operation(
         self,
         operation: Callable[[], Awaitable[T]],
         *,
         job_id: str | None = None,
+        job: DownloadJob | None = None,
     ) -> T:
         """Выполняет асинхронную операцию под контролем семафора параллельности.
 
@@ -126,6 +137,7 @@ class DownloadManager:
 
         self._waiting_count += 1
         current_task = asyncio.current_task()
+        effective_job_id = job.job_id if job is not None else job_id
 
         try:
             # Ожидание слота семафора
@@ -137,10 +149,12 @@ class DownloadManager:
 
                 if current_task:
                     self._active_tasks.add(current_task)
+                if job is not None:
+                    self._active_jobs[job.job_id] = job
 
                 logger.debug(
                     "Запуск операции [job_id=%s] (активных: %d, в очереди: %d)",
-                    job_id or "direct",
+                    effective_job_id or "direct",
                     self.active_count,
                     self.waiting_count,
                 )
@@ -148,6 +162,8 @@ class DownloadManager:
                 try:
                     return await operation()
                 finally:
+                    if job is not None:
+                        self._active_jobs.pop(job.job_id, None)
                     if current_task:
                         self._active_tasks.discard(current_task)
                     if self._is_closed and not self._active_tasks:
@@ -156,6 +172,8 @@ class DownloadManager:
             # Если задача была отменена ещё до входа в семафор
             if current_task and current_task in self._active_tasks:
                 self._active_tasks.discard(current_task)
+            if job is not None:
+                self._active_jobs.pop(job.job_id, None)
 
     async def shutdown(self, *, wait: bool = True, timeout: float | None = 15.0) -> None:
         """Выполняет graceful shutdown менеджера.
@@ -208,3 +226,4 @@ class DownloadManager:
             if not task.done():
                 task.cancel()
         self._active_tasks.clear()
+        self._active_jobs.clear()

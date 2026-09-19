@@ -29,6 +29,7 @@ from async_yt_dlp.exceptions import (
     ValidationError,
     map_ytdlp_error,
 )
+from async_yt_dlp.format import FormatSelector
 from async_yt_dlp.manager import DownloadJob, DownloadManager
 from async_yt_dlp.models import (
     DownloadResult,
@@ -38,6 +39,11 @@ from async_yt_dlp.models import (
     ThumbnailInfo,
 )
 from async_yt_dlp.options import YTDLPOptions
+from async_yt_dlp.postprocess import (
+    CompressToSize,
+    PostDownloadPipeline,
+    PostProcessResult,
+)
 from async_yt_dlp.progress import (
     DownloadStatus,
     ProgressBridge,
@@ -49,6 +55,7 @@ __all__ = [
     "AsyncYTDLPError",
     "CancellationError",
     "ClientState",
+    "CompressToSize",
     "ConfigurationError",
     "DependencyError",
     "DependencyInfo",
@@ -61,9 +68,12 @@ __all__ = [
     "ErrorPolicy",
     "ExtractionError",
     "FormatInfo",
+    "FormatSelector",
     "LifecycleError",
     "MediaInfo",
     "OperationTimeoutError",
+    "PostDownloadPipeline",
+    "PostProcessResult",
     "PostProcessingError",
     "ProgressBridge",
     "ProgressEvent",

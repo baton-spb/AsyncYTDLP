@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -131,22 +132,22 @@ def sample_playlist_info(sample_video_info: dict[str, Any]) -> dict[str, Any]:
 class FakeBackend:
     """Мок-бэкенд для быстрых юнит-тестов клиента и менеджера без обращения к yt-dlp."""
 
-    def __init__(self, return_info: dict[str, Any] | None = None, delay: float = 0.0) -> None:
-        self.return_info = return_info
+    def __init__(self, return_info: Mapping[str, object] | None = None, delay: float = 0.0) -> None:
+        self.return_info = dict(return_info) if return_info is not None else None
         self.delay = delay
-        self.extract_calls: list[dict[str, Any]] = []
-        self.download_calls: list[dict[str, Any]] = []
+        self.extract_calls: list[dict[str, object]] = []
+        self.download_calls: list[dict[str, object]] = []
         self.is_closed = False
 
     async def extract_info(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         download: bool = False,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         self.extract_calls.append(
             {
                 "url": url,
@@ -163,12 +164,12 @@ class FakeBackend:
     async def download(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         progress_bridge: ProgressBridge | None = None,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, object], float]:
         self.download_calls.append(
             {
                 "url": url,
