@@ -16,6 +16,7 @@ from async_yt_dlp._constants import DEFAULT_OUTPUT_TEMPLATE
 from async_yt_dlp._logging import redact_options
 from async_yt_dlp.enums import AudioFormat, VideoContainer
 from async_yt_dlp.format import FormatSelector
+from async_yt_dlp.template import OutputTemplate
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,7 @@ class YTDLPOptions:
     format_sort_force: bool | None = None
 
     # Файловая система и пути
-    output_template: str | None = None
+    output_template: OutputTemplate | str | None = None
     output_path: Path | str | None = None
     temp_path: Path | str | None = None
     paths: dict[str, Path | str] | None = None
@@ -70,6 +71,9 @@ class YTDLPOptions:
     concurrent_fragments: int | None = None
 
     # Постобработка
+    container: VideoContainer | str | None = (
+        None  # Желаемый контейнер вывода (mp4, mkv, webm и др.)
+    )
     extract_audio: bool | None = None
     audio_format: AudioFormat | str | None = None  # mp3, m4a, flac, opus, wav, aac, best
     audio_quality: str | int | None = None  # 0-10 или битрейт (например, "192K")
@@ -176,7 +180,7 @@ class YTDLPOptions:
 
         # Шаблон вывода
         if self.output_template is not None:
-            params["outtmpl"] = {"default": self.output_template}
+            params["outtmpl"] = {"default": str(self.output_template)}
         else:
             params["outtmpl"] = {"default": DEFAULT_OUTPUT_TEMPLATE}
 
@@ -305,8 +309,10 @@ class YTDLPOptions:
                 audio_pp["preferredquality"] = str(self.audio_quality)
             pps.append(audio_pp)
 
-        if self.remux_video:
-            pps.append({"key": "FFmpegVideoRemuxer", "preferedformat": str(self.remux_video)})
+        target_container = self.container if self.container is not None else self.remux_video
+        if target_container:
+            params["remuxvideo"] = str(target_container)
+            pps.append({"key": "FFmpegVideoRemuxer", "preferedformat": str(target_container)})
 
         if self.recode_video:
             pps.append({"key": "FFmpegVideoConvertor", "preferedformat": str(self.recode_video)})
@@ -446,6 +452,7 @@ class YTDLPOptions:
             audio_quality=other.audio_quality
             if other.audio_quality is not None
             else self.audio_quality,
+            container=other.container if other.container is not None else self.container,
             remux_video=other.remux_video if other.remux_video is not None else self.remux_video,
             recode_video=other.recode_video
             if other.recode_video is not None

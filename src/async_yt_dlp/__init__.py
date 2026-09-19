@@ -56,6 +56,7 @@ from async_yt_dlp.progress import (
     ProgressBridge,
     ProgressEvent,
 )
+from async_yt_dlp.template import OutputTemplate
 
 __all__ = [
     "AsyncYTDLP",
@@ -81,6 +82,7 @@ __all__ = [
     "LifecycleError",
     "MediaInfo",
     "OperationTimeoutError",
+    "OutputTemplate",
     "PostDownloadPipeline",
     "PostProcessResult",
     "PostProcessingError",

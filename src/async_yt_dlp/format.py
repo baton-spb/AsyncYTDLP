@@ -8,6 +8,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from async_yt_dlp.enums import VideoContainer
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,14 +109,22 @@ class FormatSelector:
         """
         return self._add_filter(f"fps<={fps}")
 
-    def ext(self, extension: str) -> FormatSelector:
-        """Ограничивает расширение контейнера потока (например, 'mp4', 'm4a', 'webm').
+    def ext(self, extension: VideoContainer | str) -> FormatSelector:
+        """Ограничивает расширение контейнера потока (например, VideoContainer.MP4, 'mp4', 'webm').
 
         Args:
-            extension: Имя контейнера без точки.
+            extension: Имя контейнера без точки или перечисление VideoContainer.
         """
-        clean_ext = extension.lstrip(".")
+        clean_ext = str(extension).lstrip(".")
         return self._add_filter(f"ext={clean_ext}")
+
+    def container(self, container: VideoContainer | str) -> FormatSelector:
+        """Ограничивает расширение контейнера потока (псевдоним для .ext()).
+
+        Args:
+            container: Имя контейнера или перечисление VideoContainer.
+        """
+        return self.ext(container)
 
     def vcodec(self, codec: str, *, prefix: bool = False) -> FormatSelector:
         """Фильтрует видеопоток по имени видеокодека.
@@ -235,8 +247,24 @@ class FormatSelector:
     # --- Готовые пресеты ---
 
     @classmethod
-    def preset_1080p(cls) -> FormatSelector:
-        """Пресет Full HD 1080p: лучшее видео до 1080p + лучшее аудио с падением на лучший общий поток."""
+    def preset_1080p(cls, container: VideoContainer | str | None = None) -> FormatSelector:
+        """Пресет Full HD 1080p: лучшее видео до 1080p + лучшее аудио с падением на лучший общий поток.
+
+        Args:
+            container: Опциональное ограничение контейнера (например, VideoContainer.MP4).
+        """
+        if container is not None:
+            c = str(container).lstrip(".")
+            return (
+                cls.video()
+                .max_height(1080)
+                .ext(c)
+                .merge(cls.audio())
+                .fallback(cls.video().max_height(1080).merge(cls.audio()))
+                .fallback(cls.any_stream().ext(c))
+                .fallback(cls.any_stream().max_height(1080))
+                .fallback(cls.any_stream())
+            )
         return (
             cls.video()
             .max_height(1080)
@@ -246,8 +274,24 @@ class FormatSelector:
         )
 
     @classmethod
-    def preset_720p(cls) -> FormatSelector:
-        """Пресет HD 720p: лучшее видео до 720p + лучшее аудио с падением на лучший общий поток."""
+    def preset_720p(cls, container: VideoContainer | str | None = None) -> FormatSelector:
+        """Пресет HD 720p: лучшее видео до 720p + лучшее аудио с падением на лучший общий поток.
+
+        Args:
+            container: Опциональное ограничение контейнера (например, VideoContainer.MP4).
+        """
+        if container is not None:
+            c = str(container).lstrip(".")
+            return (
+                cls.video()
+                .max_height(720)
+                .ext(c)
+                .merge(cls.audio())
+                .fallback(cls.video().max_height(720).merge(cls.audio()))
+                .fallback(cls.any_stream().ext(c))
+                .fallback(cls.any_stream().max_height(720))
+                .fallback(cls.any_stream())
+            )
         return (
             cls.video()
             .max_height(720)
@@ -295,6 +339,20 @@ class FormatSelector:
         )
 
     @classmethod
-    def preset_max_quality(cls) -> FormatSelector:
-        """Пресет максимального качества: наилучшее видео любого разрешения + наилучшее аудио."""
+    def preset_max_quality(cls, container: VideoContainer | str | None = None) -> FormatSelector:
+        """Пресет максимального качества: наилучшее видео любого разрешения + наилучшее аудио.
+
+        Args:
+            container: Опциональное ограничение контейнера (например, VideoContainer.MP4).
+        """
+        if container is not None:
+            c = str(container).lstrip(".")
+            return (
+                cls.video()
+                .ext(c)
+                .merge(cls.audio())
+                .fallback(cls.video().merge(cls.audio()))
+                .fallback(cls.any_stream().ext(c))
+                .fallback(cls.any_stream())
+            )
         return cls.video().merge(cls.audio()).fallback(cls.any_stream())
