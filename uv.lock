@@ -89,7 +89,7 @@ wheels = [
 
 [[package]]
 name = "async-yt-dlp"
-version = "0.1.4"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "yt-dlp" },

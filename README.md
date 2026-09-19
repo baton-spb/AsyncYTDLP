@@ -135,13 +135,18 @@ asyncio.run(main())
 ```python
 from async_yt_dlp import FormatSelector, VideoContainer
 
-# Готовые пресеты:
-FormatSelector.preset_720p()                              # 720p видео + аудио
-FormatSelector.preset_1080p(container=VideoContainer.MP4) # 1080p, приоритет mp4
-FormatSelector.preset_audio_only("m4a")                   # только аудио
+# Универсальный выбор любого разрешения:
+FormatSelector.resolution(720, container=VideoContainer.MP4)
+FormatSelector.resolution(1080, container=VideoContainer.MP4, fps=60)
+
+# Готовые пресеты (144p .. 4K/8K):
+FormatSelector.preset_720p(container=VideoContainer.MP4)  # 720p HD
+FormatSelector.preset_1080p(container=VideoContainer.MP4) # 1080p Full HD
+FormatSelector.preset_4k(container=VideoContainer.MP4)    # 4K UHD
+FormatSelector.preset_audio_only("mp3")                   # только аудио (mp3, m4a, flac)
 FormatSelector.preset_max_quality()                       # максимальное качество
 
-# Ручная сборка:
+# Ручная сборка (fluent builder):
 fmt = FormatSelector.video().max_height(480).ext("mp4").merge(FormatSelector.audio())
 ```
 

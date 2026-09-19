@@ -3,7 +3,7 @@
 from typing import Final
 
 # Версия библиотеки (соответствует Semantic Versioning)
-__version__: Final[str] = "0.1.4"
+__version__: Final[str] = "0.1.5"
 
 # Имя корневого логгера библиотеки
 LOGGER_NAME: Final[str] = "async_yt_dlp"

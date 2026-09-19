@@ -112,6 +112,14 @@ async def download_many(
 - `subtitles` (`dict[str, tuple[SubtitleInfo, ...]]`): дорожки субтитров по языкам.
 - `raw_data` (`dict[str, Any]`): полный исходный словарь yt-dlp.
 - `to_dict(remove_private_keys=False) -> dict[str, Any]`: безопасное JSON-представление.
+- `get_available_resolutions() -> list[int]`: отсортированный по убыванию список доступных разрешений (например, `[2160, 1440, 1080, 720, 480, 360, 240, 144]`).
+- `estimate_size(height: int | None = None) -> int | None`: расчетный суммарный размер файла (видео + аудио) в байтах.
+- `estimate_size_str(height: int | None = None) -> str`: форматированный расчетный размер файла (например, `'62.01 MiB'`).
+- `get_best_video_format(height: int | None = None, container: str | None = None) -> FormatInfo | None`: лучший видеопоток.
+- `get_best_audio_format() -> FormatInfo | None`: лучший аудиопоток.
+- `get_video_formats(height: int | None = None, container: str | None = None) -> list[FormatInfo]`: список доступных видеопотоков.
+- `get_audio_formats() -> list[FormatInfo]`: список доступных аудиопотоков без видео.
+
 
 ### `FormatInfo` (frozen dataclass)
 - `format_id` (`str`): ID формата (например, '137', '22', 'ba').
@@ -164,10 +172,13 @@ async def download_many(
 - `to_safe_dict() -> dict[str, Any]`: маскированное представление для безопасного логирования.
 
 ### `FormatSelector`
-- **Пресеты**: `preset_720p()`, `preset_1080p()`, `preset_audio_only(ext)`, `preset_max_quality()`.
+- **Универсальная фабрика**: `FormatSelector.resolution(height, container=None, fps=None, exact=False)`.
+- **Пресеты разрешений**: `preset_144p()`, `preset_240p()`, `preset_360p()`, `preset_480p()`, `preset_720p()`, `preset_1080p()`, `preset_1440p()` / `preset_2k()`, `preset_2160p()` / `preset_4k()`, `preset_4320p()` / `preset_8k()`.
+- **Специальные пресеты**: `preset_max_quality()`, `preset_worst()`, `preset_best_audio()`, `preset_audio_only(ext)`, `preset_compatibility()`, `preset_telegram(max_size_mb)`.
 - **Конструкторы**: `FormatSelector.video()`, `FormatSelector.audio()`.
-- **Fluent-методы**: `max_height(h)`, `min_height(h)`, `ext(extension)`, `codec(vcodec)`, `fps(rate)`, `merge(audio_selector)`.
+- **Fluent-методы**: `max_height(h)`, `min_height(h)`, `exact_height(h)`, `ext(extension)`, `container(c)`, `vcodec(codec)`, `acodec(codec)`, `max_fps(rate)`, `merge(audio_selector)`, `fallback(other)`.
 - `build() -> str`: генерация валидной строки селектора формата `yt-dlp`.
+
 
 ### `OutputTemplate`
 - **Пресеты**: `title_only()`, `title_and_id()`, `dated()`, `playlist_folder()`, `channel_folder()`.

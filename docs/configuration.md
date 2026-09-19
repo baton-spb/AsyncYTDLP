@@ -10,18 +10,51 @@
 
 ### Выбор формата (`FormatSelector` или строка)
 
-Основной способ задания формата — использование объектного построителя `FormatSelector`:
+Основной способ задания формата — использование объектного построителя `FormatSelector`.
+
+#### Универсальная фабрика `FormatSelector.resolution()`
+Позволяет сформировать селектор для **любого разрешения** с поддержкой контейнера, ограничения частоты кадров и строгого соответствия:
 
 ```python
 from async_yt_dlp import FormatSelector, VideoContainer, YTDLPOptions
 
-# Готовые пресеты:
-options = YTDLPOptions(
-    format=FormatSelector.preset_1080p(container=VideoContainer.MP4),
-    container=VideoContainer.MP4,
-)
+# Базовый выбор (лучшее видео до указанной высоты + лучшее аудио):
+FormatSelector.resolution(720)
 
-# Ручная сборка через цепочку вызовов (fluent builder):
+# С принудительным приоритетом контейнера (сначала родной MP4, fallback на перепаковку):
+FormatSelector.resolution(1080, container=VideoContainer.MP4)
+
+# С ограничением FPS (например, не выше 60 кадров/сек):
+FormatSelector.resolution(1080, container=VideoContainer.MP4, fps=60)
+
+# Строгое соответствие разрешению (без отката на меньшие высоты):
+FormatSelector.resolution(1080, exact=True)
+```
+
+#### Готовые пресеты качества
+```python
+# Стандартная линейка разрешений YouTube:
+FormatSelector.preset_144p(container=VideoContainer.MP4)
+FormatSelector.preset_240p(container=VideoContainer.MP4)
+FormatSelector.preset_360p(container=VideoContainer.MP4)
+FormatSelector.preset_480p(container=VideoContainer.MP4)
+FormatSelector.preset_720p(container=VideoContainer.MP4)   # HD
+FormatSelector.preset_1080p(container=VideoContainer.MP4)  # Full HD
+FormatSelector.preset_1440p(container=VideoContainer.MP4)  # 2K (или preset_2k)
+FormatSelector.preset_2160p(container=VideoContainer.MP4)  # 4K UHD (или preset_4k)
+FormatSelector.preset_4320p(container=VideoContainer.MP4)  # 8K UHD (или preset_8k)
+
+# Специальные пресеты:
+FormatSelector.preset_max_quality()          # Максимальное доступное качество
+FormatSelector.preset_worst()                # Минимальный размер (для превью / экономии)
+FormatSelector.preset_best_audio()           # Лучший доступный звук любого формата
+FormatSelector.preset_audio_only("mp3")      # Только аудио в заданном формате
+FormatSelector.preset_compatibility()        # H.264 + AAC для старых плееров
+FormatSelector.preset_telegram(max_size_mb=50) # С лимитом на вес файла для Telegram
+```
+
+#### Ручная сборка (fluent builder)
+```python
 options = YTDLPOptions(
     format=(
         FormatSelector.video()
@@ -32,10 +65,23 @@ options = YTDLPOptions(
     format_sort=["res:720", "fps:60"],
     format_sort_force=True,
 )
-
-# Поддерживается и прямая строка формата yt-dlp для специфических селекторов:
-options = YTDLPOptions(format="bestvideo+bestaudio/best")
 ```
+
+#### Динамический опрос разрешений и оценка размеров для ботов
+Для создания интерфейсов ботов с инлайн-кнопками объект `MediaInfo` предоставляет удобные методы:
+
+```python
+info = await ytdlp.extract_info(url, download=False)
+
+# Список всех реально доступных на сервере разрешений (например, [1080, 720, 360, 144]):
+resolutions = info.get_available_resolutions()
+
+# Генерация кнопок с расчетным размером файла:
+for res in resolutions:
+    size_str = info.estimate_size_str(res)  # Например, "~62.01 MiB"
+    print(f"Кнопка: {res}p ({size_str})")
+```
+
 
 ### Пути, шаблоны имен и контейнер файлов
 
