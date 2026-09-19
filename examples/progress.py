@@ -16,22 +16,20 @@ async def main() -> None:
                 match event.status:
                     case DownloadStatus.DOWNLOADING:
                         pct = f"{event.percent:.1f}%" if event.percent is not None else "N/A"
-                        print(
-                            f"\r[Загрузка] {pct:>6} | Скорость: {event.speed_str:>10} "
-                            f"| Скачано: {event.downloaded_str:>10} | ETA: {event.eta_str}",
-                            end="",
-                            flush=True,
+                        line = (
+                            f"[Загрузка] {pct:>6} | Скорость: {event.speed_str:>10} "
+                            f"| Скачано: {event.downloaded_str:>10} | ETA: {event.eta_str}"
                         )
+                        print(f"\r\033[K{line:<75}", end="", flush=True)
                     case DownloadStatus.FINISHED:
-                        print(f"\n[Загрузка завершена] Файл: {event.filename}")
+                        print(f"\r\033[K[Загрузка завершена] Файл: {event.filename}")
                     case DownloadStatus.POST_PROCESSING:
-                        print(
-                            f"[Постобработка] Выполняется: {event.postprocessor} ({event.postprocessor_status})"
-                        )
+                        if event.postprocessor_status == "started":
+                            print(f"\r\033[K[Постобработка] Выполняется: {event.postprocessor}...")
                     case DownloadStatus.COMPLETE:
-                        print("\n[Готово] Вся обработка успешно завершена!")
+                        print("\r\033[K[Готово] Вся обработка успешно завершена!")
                     case DownloadStatus.ERROR:
-                        print(f"\n[Ошибка] {event.error}")
+                        print(f"\r\033[K[Ошибка] {event.error}")
 
         except AsyncYTDLPError as err:
             print(f"\nОшибка операции: {err}")

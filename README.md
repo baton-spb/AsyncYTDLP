@@ -110,15 +110,17 @@ async def main() -> None:
     async with AsyncYTDLP() as ytdlp:
         async for event in ytdlp.download_with_progress(
             "https://www.youtube.com/watch?v=BaW_jenozKc",
-            throttle_interval=0.5,
+            throttle_interval=0.2,
         ):
             if event.status == DownloadStatus.DOWNLOADING:
-                print(
-                    f"\rЗагрузка: {event.percent:.1f}% | {event.speed_str} | ETA: {event.eta_str}",
-                    end="",
-                )
+                line = f"Загрузка: {event.percent:.1f}% | {event.speed_str} | ETA: {event.eta_str}"
+                # \033[K очищает остаток строки, ljust(70) исключает наложение старых символов
+                print(f"\r\033[K{line:<70}", end="", flush=True)
+            elif event.status == DownloadStatus.POST_PROCESSING:
+                if event.postprocessor_status == "started":
+                    print(f"\r\033[KПостобработка: {event.postprocessor}...", flush=True)
             elif event.status == DownloadStatus.COMPLETE:
-                print("\nГотово!")
+                print("\r\033[KЗагрузка успешно завершена!", flush=True)
 
 
 asyncio.run(main())
