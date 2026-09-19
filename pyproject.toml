@@ -39,10 +39,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/async-yt-dlp"
-Documentation = "https://github.com/your-org/async-yt-dlp#readme"
-Repository = "https://github.com/your-org/async-yt-dlp.git"
-Issues = "https://github.com/your-org/async-yt-dlp/issues"
+Homepage = "http://localhost:3000/6aton/AsyncYT-DLP"
+Documentation = "http://localhost:3000/6aton/AsyncYT-DLP#readme"
+Repository = "ssh://git@localhost:2222/6aton/AsyncYT-DLP.git"
+Issues = "http://localhost:3000/6aton/AsyncYT-DLP/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/async_yt_dlp"]
