@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
+import os
 import time
 from typing import Any, Protocol, cast
 
@@ -152,6 +153,8 @@ class ThreadBackend:
         from yt_dlp import YoutubeDL
 
         opts = dict(params)
+        self._ensure_ffmpeg_location(opts)
+
         # Настройка адаптера логирования, если пользователь не указал свой
         if "logger" not in opts:
             opts["logger"] = YTDLPLoggerAdapter()
@@ -178,6 +181,8 @@ class ThreadBackend:
         from yt_dlp import YoutubeDL
 
         opts = dict(params)
+        self._ensure_ffmpeg_location(opts)
+
         if "logger" not in opts:
             opts["logger"] = YTDLPLoggerAdapter()
 
@@ -196,6 +201,20 @@ class ThreadBackend:
             if result is None:
                 raise RuntimeError(f"Не удалось скачать медиа-ресурс для {url}")
             return cast(dict[str, Any], result)
+
+    @staticmethod
+    def _ensure_ffmpeg_location(opts: dict[str, Any]) -> None:
+        """Автоматически разрешает расположение ffmpeg, если не задано пользователем явно."""
+        from async_yt_dlp._dependencies import check_dependencies
+
+        deps = check_dependencies()
+        if deps.ffmpeg_path is not None:
+            ffmpeg_dir = str(deps.ffmpeg_path.parent)
+            if "ffmpeg_location" not in opts:
+                opts["ffmpeg_location"] = ffmpeg_dir
+            current_path = os.environ.get("PATH", "")
+            if ffmpeg_dir not in current_path:
+                os.environ["PATH"] = f"{ffmpeg_dir}{os.pathsep}{current_path}"
 
     async def close(self) -> None:
         """Очистка бэкенда."""

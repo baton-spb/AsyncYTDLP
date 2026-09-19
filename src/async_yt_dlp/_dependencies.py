@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import functools
 import importlib.util
+import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
@@ -110,15 +112,29 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
                     ffprobe_bin = candidate
                     break
 
+    def _find_windows_candidates(filename: str) -> Path | None:
+        if sys.platform != "win32":
+            return None
+        candidates = [
+            Path(os.path.expandvars(rf"%LOCALAPPDATA%\Microsoft\WinGet\Links\{filename}")),
+            Path(os.path.expandvars(rf"%USERPROFILE%\scoop\shims\{filename}")),
+            Path(os.path.expandvars(rf"%ProgramData%\chocolatey\bin\{filename}")),
+            Path(rf"C:\Program Files\nodejs\{filename}"),
+        ]
+        for c in candidates:
+            if c.is_file():
+                return c
+        return None
+
     if not ffmpeg_bin:
         found_ffmpeg = shutil.which("ffmpeg")
-        if found_ffmpeg:
-            ffmpeg_bin = Path(found_ffmpeg)
+        ffmpeg_bin = Path(found_ffmpeg) if found_ffmpeg else _find_windows_candidates("ffmpeg.exe")
 
     if not ffprobe_bin:
         found_ffprobe = shutil.which("ffprobe")
-        if found_ffprobe:
-            ffprobe_bin = Path(found_ffprobe)
+        ffprobe_bin = (
+            Path(found_ffprobe) if found_ffprobe else _find_windows_candidates("ffprobe.exe")
+        )
 
     ffmpeg_ver: str | None = None
     if ffmpeg_bin:
@@ -127,7 +143,7 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
     # 3. Поиск JS runtimes
     found_runtimes: list[str] = []
     for rt in _KNOWN_JS_RUNTIMES:
-        if shutil.which(rt):
+        if shutil.which(rt) or (sys.platform == "win32" and _find_windows_candidates(f"{rt}.exe")):
             found_runtimes.append(rt)
 
     # 4. Проверка дополнительных Python-пакетов yt-dlp
