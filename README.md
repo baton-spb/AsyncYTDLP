@@ -1,5 +1,11 @@
 # async-yt-dlp
 
+[![CI](https://github.com/baton-spb/AsyncYTDLP/actions/workflows/ci.yml/badge.svg)](https://github.com/baton-spb/AsyncYTDLP/actions)
+[![PyPI version](https://img.shields.io/pypi/v/async-yt-dlp.svg)](https://pypi.org/project/async-yt-dlp/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Typing: Typed](https://img.shields.io/badge/typing-typed-green.svg)](https://peps.python.org/pep-0561/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 <p align="center">
   <b>Высокопроизводительная, строго типизированная асинхронная Python-библиотека обёртка над yt-dlp.</b>
 </p>
@@ -32,7 +38,7 @@
 -  **Потокобезопасность**: Изолированный экземпляр `YoutubeDL` на каждую операцию исключает состояние гонки и порчу сессий.
 -  **Плавный стриминг прогресса**: Асинхронный генератор `download_with_progress` с адаптивным троттлингом (защита от перегрузки интерфейса и спама).
 -  **Контроль параллельности**: Встроенный `DownloadManager` на базе `asyncio.Semaphore` с ограничением емкости очереди (backpressure).
--  **Структурированная конкурентность**: Поддержка Python 3.14 `asyncio.TaskGroup` в пакетной загрузке `download_many`.
+-  **Структурированная конкурентность**: Поддержка `asyncio.TaskGroup` в пакетной загрузке `download_many`.
 -  **Честная модель отмены**: Корректная обработка `task.cancel()`, таймаутов `asyncio.timeout` и graceful shutdown.
 -  **Безопасность данных**: Автоматическая маскировка паролей, токенов, cookies и прокси в логах; защита от SSRF и протокола `file://`.
 -  **Проверка зависимостей**: Встроенная диагностика окружения (`check_dependencies`) для проверки `yt-dlp`, `ffmpeg`, `ffprobe` и JS-движков.
@@ -41,10 +47,17 @@
 
 ## Установка
 
-Требуется Python **3.14+**.
+Требуется Python **3.11+**.
 
 ```bash
+# Базовая установка:
 pip install async-yt-dlp
+
+# С опциональной интеграцией с async-ffmpeg:
+pip install "async-yt-dlp[ffmpeg]"
+
+# Полный набор (async-ffmpeg + сетевые акселераторы curl-cffi, websockets и др.):
+pip install "async-yt-dlp[full]"
 ```
 
 Или с использованием `uv`:

@@ -7,7 +7,7 @@ name = "async-yt-dlp"
 version = "0.1.0"
 description = "Production-ready, strictly typed async wrapper for yt-dlp"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.11"
 license = "MIT"
 keywords = ["yt-dlp", "async", "asyncio", "youtube", "video", "download"]
 authors = [
@@ -20,13 +20,15 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Multimedia :: Video",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
 dependencies = [
-    "graphifyy>=0.9.64",
     "yt-dlp>=2024.01.01",
 ]
 
@@ -48,6 +50,7 @@ full = [
     "yt-dlp-ejs>=0.8.0",
 ]
 dev = [
+    "graphifyy>=0.9.64",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "ruff>=0.8.0",
@@ -56,10 +59,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "http://localhost:3000/6aton/AsyncYT-DLP"
-Documentation = "http://localhost:3000/6aton/AsyncYT-DLP#readme"
-Repository = "ssh://git@localhost:2222/6aton/AsyncYT-DLP.git"
-Issues = "http://localhost:3000/6aton/AsyncYT-DLP/issues"
+Homepage = "https://github.com/baton-spb/AsyncYTDLP"
+Documentation = "https://github.com/baton-spb/AsyncYTDLP#readme"
+Repository = "https://github.com/baton-spb/AsyncYTDLP.git"
+Issues = "https://github.com/baton-spb/AsyncYTDLP/issues"
 
 [tool.uv.sources]
 async-ffmpeg = { path = "../AsyncFFmpeg" }
