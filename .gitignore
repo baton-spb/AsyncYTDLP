@@ -44,6 +44,9 @@ htmlcov/
 yt-dlp/
 reference/
 
+# Graphify output directory
+graphify-out/
+
 # IDE / Editor
 .idea/
 .vscode/

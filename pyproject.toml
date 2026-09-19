@@ -26,6 +26,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
+    "graphifyy>=0.9.64",
     "yt-dlp>=2024.01.01",
 ]
 
