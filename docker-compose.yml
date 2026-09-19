@@ -1,0 +1,11 @@
+services:
+  async-yt-dlp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: async-yt-dlp-service
+    restart: unless-stopped
+    volumes:
+      - ./downloads:/app/downloads
+    environment:
+      - PYTHONUNBUFFERED=1
