@@ -29,10 +29,13 @@ def _require_async_ffmpeg() -> None:
     Raises:
         DependencyError: Если пакет `async-ffmpeg` не установлен.
     """
-    if importlib.util.find_spec("async_ffmpeg") is None:
+    if (
+        importlib.util.find_spec("async_ffmpeg") is None
+        and importlib.util.find_spec("aio_ffmpeg") is None
+    ):
         raise DependencyError(
-            "Для использования модуля postprocess требуется установить пакет async-ffmpeg. "
-            "Выполните: uv add async-yt-dlp[ffmpeg] или uv add async-ffmpeg."
+            "Для использования модуля postprocess требуется установить пакет aio-ffmpeg. "
+            "Выполните: uv add async-yt-dlp[ffmpeg] или uv add aio-ffmpeg."
         )
 
 

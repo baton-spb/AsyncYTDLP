@@ -34,10 +34,10 @@ def _create_mock_download_result(filepath: Path, duration: float = 60.0) -> Down
 
 
 def test_require_async_ffmpeg_error() -> None:
-    """Проверяет выброс DependencyError, если async_ffmpeg отсутствует в системе."""
+    """Проверяет выброс DependencyError, если async_ffmpeg/aio_ffmpeg отсутствует в системе."""
     with (
         patch("importlib.util.find_spec", return_value=None),
-        pytest.raises(DependencyError, match="требуется установить пакет async-ffmpeg"),
+        pytest.raises(DependencyError, match="требуется установить пакет aio-ffmpeg"),
     ):
         _require_async_ffmpeg()
 

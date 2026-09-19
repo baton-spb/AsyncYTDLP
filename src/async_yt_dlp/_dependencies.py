@@ -135,8 +135,11 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
                 return c
         return None
 
-    # Попытка обнаружения через async_ffmpeg (если установлен)
-    has_async_ffmpeg = importlib.util.find_spec("async_ffmpeg") is not None
+    # Попытка обнаружения через async_ffmpeg / aio_ffmpeg (если установлен)
+    has_async_ffmpeg = (
+        importlib.util.find_spec("async_ffmpeg") is not None
+        or importlib.util.find_spec("aio_ffmpeg") is not None
+    )
     if has_async_ffmpeg:
         try:
             from async_ffmpeg import find_ffmpeg as aff_find_ffmpeg

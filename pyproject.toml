@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "async-yt-dlp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Production-ready, strictly typed async wrapper for yt-dlp"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -34,10 +34,10 @@ dependencies = [
 
 [project.optional-dependencies]
 ffmpeg = [
-    "async-ffmpeg>=0.1.0",
+    "aio-ffmpeg>=0.1.0",
 ]
 full = [
-    "async-ffmpeg>=0.1.0",
+    "aio-ffmpeg>=0.1.0",
     "brotli>=1.0.0",
     "certifi>=2024.01.01",
     "curl-cffi>=0.5.10",
@@ -65,7 +65,7 @@ Repository = "https://github.com/baton-spb/AsyncYTDLP.git"
 Issues = "https://github.com/baton-spb/AsyncYTDLP/issues"
 
 [tool.uv.sources]
-async-ffmpeg = { path = "../AsyncFFmpeg" }
+aio-ffmpeg = { path = "../AsyncFFmpeg" }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/async_yt_dlp"]
