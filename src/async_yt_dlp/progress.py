@@ -245,6 +245,7 @@ class ProgressBridge:
         self._throttle_interval = max(0.0, throttle_interval)
         self._queue: asyncio.Queue[ProgressEvent | None] = asyncio.Queue(maxsize=queue_size)
         self._last_download_emit: float = 0.0
+        self._last_pp_state: tuple[str | None, str | None] | None = None
         self._closed: bool = False
 
     def sync_hook(self, progress_dict: Mapping[str, object]) -> None:
@@ -270,6 +271,12 @@ class ProgressBridge:
             return
 
         event = ProgressEvent.from_postprocessor(pp_dict)
+        # Защита от дубликатов хуков из-за внутренней множественной регистрации в yt-dlp
+        pp_state = (event.postprocessor, event.postprocessor_status)
+        if pp_state == self._last_pp_state:
+            return
+        self._last_pp_state = pp_state
+
         self._push_event(event)
 
     def finish(self, *, error: str | None = None) -> None:

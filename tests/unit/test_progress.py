@@ -123,3 +123,26 @@ async def test_progress_bridge_queue_overflow_protection():
     assert len(collected) > 0
     # Проверяем, что завершающее событие COMPLETE доставлено
     assert any(e.status == DownloadStatus.COMPLETE for e in collected)
+
+
+@pytest.mark.asyncio
+async def test_progress_bridge_postprocessor_deduplication():
+    loop = asyncio.get_running_loop()
+    bridge = ProgressBridge(loop, throttle_interval=0.0)
+
+    # Симулируем повторные вызовы хука для одного и того же шага постпроцессора
+    bridge.sync_postprocessor_hook({"status": "started", "postprocessor": "VideoRemuxer"})
+    bridge.sync_postprocessor_hook({"status": "started", "postprocessor": "VideoRemuxer"})  # дубликат
+    bridge.sync_postprocessor_hook({"status": "finished", "postprocessor": "VideoRemuxer"})
+    bridge.sync_postprocessor_hook({"status": "finished", "postprocessor": "VideoRemuxer"})  # дубликат
+    bridge.finish()
+
+    collected: list[ProgressEvent] = []
+    async for event in bridge:
+        collected.append(event)
+
+    pp_events = [e for e in collected if e.status == DownloadStatus.POST_PROCESSING]
+    assert len(pp_events) == 2
+    assert pp_events[0].postprocessor_status == "started"
+    assert pp_events[1].postprocessor_status == "finished"
+
