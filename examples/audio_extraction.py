@@ -3,7 +3,7 @@
 import asyncio
 from pathlib import Path
 
-from async_yt_dlp import AsyncYTDLP, AsyncYTDLPError, YTDLPOptions
+from async_yt_dlp import AsyncYTDLP, AsyncYTDLPError, AudioFormat, YTDLPOptions
 
 
 async def main() -> None:
@@ -13,8 +13,8 @@ async def main() -> None:
     options = YTDLPOptions(
         format="bestaudio/best",
         extract_audio=True,
-        audio_format="mp3",
-        audio_quality="192K",
+        audio_format=AudioFormat.MP3,
+        audio_quality=0,  # 0 = максимальное VBR качество
         embed_thumbnail=True,
         embed_metadata=True,
         output_path=Path("./downloads/audio"),
