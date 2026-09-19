@@ -73,11 +73,14 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
     """Внутренняя кешированная проверка зависимостей."""
     # 1. Проверка yt-dlp
     try:
-        import yt_dlp
-
-        ytdlp_ver = getattr(yt_dlp, "__version__", "unknown")
+        from yt_dlp.version import __version__ as ytdlp_ver
     except ImportError:
-        ytdlp_ver = "not_installed"
+        try:
+            import yt_dlp
+
+            ytdlp_ver = getattr(yt_dlp, "__version__", "unknown")
+        except ImportError:
+            ytdlp_ver = "not_installed"
 
     # 2. Поиск ffmpeg и ffprobe
     ffmpeg_bin: Path | None = None
