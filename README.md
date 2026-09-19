@@ -1,6 +1,6 @@
 # async-yt-dlp
 
-[![CI](https://github.com/baton-spb/AsyncYTDLP/actions/workflows/ci.yml/badge.svg)](https://github.com/baton-spb/AsyncYTDLP/actions)
+[![CI](https://github.com/baton-spb/async-yt-dlp/actions/workflows/ci.yml/badge.svg)](https://github.com/baton-spb/async-yt-dlp/actions)
 [![PyPI version](https://img.shields.io/pypi/v/async-yt-dlp.svg)](https://pypi.org/project/async-yt-dlp/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Typing: Typed](https://img.shields.io/badge/typing-typed-green.svg)](https://peps.python.org/pep-0561/)

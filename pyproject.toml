@@ -59,10 +59,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/baton-spb/AsyncYTDLP"
-Documentation = "https://github.com/baton-spb/AsyncYTDLP#readme"
-Repository = "https://github.com/baton-spb/AsyncYTDLP.git"
-Issues = "https://github.com/baton-spb/AsyncYTDLP/issues"
+Homepage = "https://github.com/baton-spb/async-yt-dlp"
+Documentation = "https://github.com/baton-spb/async-yt-dlp#readme"
+Repository = "https://github.com/baton-spb/async-yt-dlp.git"
+Issues = "https://github.com/baton-spb/async-yt-dlp/issues"
 
 [tool.uv.sources]
 aio-ffmpeg = { path = "../AsyncFFmpeg" }
