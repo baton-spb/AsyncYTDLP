@@ -42,6 +42,7 @@ htmlcov/
 
 # Local yt-dlp source archive (used for reference)
 yt-dlp/
+reference/
 
 # IDE / Editor
 .idea/
