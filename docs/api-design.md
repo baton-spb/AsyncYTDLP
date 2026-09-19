@@ -16,8 +16,8 @@
 from async_yt_dlp import AsyncYTDLP
 
 async with AsyncYTDLP(
-    max_concurrency=4,        # Макс. параллельных операций
-    queue_size=100,           # Макс. размер очереди
+    max_concurrency=4,  # Макс. параллельных операций
+    queue_size=100,  # Макс. размер очереди
     default_options=YTDLPOptions(
         format="bestvideo+bestaudio/best",
         output_template="%(title)s [%(id)s].%(ext)s",
@@ -42,21 +42,21 @@ async with AsyncYTDLP(
 info = await ytdlp.extract_info(url, download=False)
 
 # Typed high-level поля
-info.id             # str
-info.title          # str
-info.description    # str | None
-info.duration       # float | None
-info.uploader       # str | None
-info.channel        # str | None
-info.webpage_url    # str
-info.thumbnail      # str | None
-info.ext            # str | None
-info.filesize       # int | None
-info.is_playlist    # bool
-info.entries        # list[MediaInfo] | None  (для плейлистов)
-info.formats        # list[FormatInfo]
-info.subtitles      # dict[str, list[SubtitleInfo]]
-info.thumbnails     # list[ThumbnailInfo]
+info.id  # str
+info.title  # str
+info.description  # str | None
+info.duration  # float | None
+info.uploader  # str | None
+info.channel  # str | None
+info.webpage_url  # str
+info.thumbnail  # str | None
+info.ext  # str | None
+info.filesize  # int | None
+info.is_playlist  # bool
+info.entries  # list[MediaInfo] | None  (для плейлистов)
+info.formats  # list[FormatInfo]
+info.subtitles  # dict[str, list[SubtitleInfo]]
+info.thumbnails  # list[ThumbnailInfo]
 
 # Полный raw dict (dict-like, может быть не JSON-serializable)
 info.raw_data
@@ -70,10 +70,10 @@ serializable = info.to_dict()
 ```python
 result = await ytdlp.download(url)
 
-result.filepath         # Path — финальный путь к файлу
-result.info             # MediaInfo — метаданные
-result.requested_formats # list[FormatInfo] | None
-result.elapsed          # float — время выполнения (секунды)
+result.filepath  # Path — финальный путь к файлу
+result.info  # MediaInfo — метаданные
+result.requested_formats  # list[FormatInfo] | None
+result.elapsed  # float — время выполнения (секунды)
 ```
 
 ### 1.4 Скачивание с прогрессом
@@ -173,10 +173,10 @@ async with AsyncYTDLP(
 
 ```python
 deps = await ytdlp.check_dependencies()
-print(deps.ytdlp_version)      # str
-print(deps.ffmpeg_available)    # bool
-print(deps.ffprobe_available)   # bool
-print(deps.ffmpeg_version)      # str | None
+print(deps.ytdlp_version)  # str
+print(deps.ffmpeg_available)  # bool
+print(deps.ffprobe_available)  # bool
+print(deps.ffmpeg_version)  # str | None
 ```
 
 ---
@@ -319,28 +319,28 @@ loop.call_soon_threadsafe(
 ```python
 class ProgressBridge:
     """Мост между sync progress hooks yt-dlp и async consumers."""
-    
+
     def __init__(self, loop: asyncio.AbstractEventLoop, throttle: float = 0.0):
         self._loop = loop
         self._queue: asyncio.Queue[ProgressEvent | None] = asyncio.Queue(maxsize=256)
         self._throttle = throttle
         self._last_emit = 0.0
-    
+
     def sync_hook(self, progress_dict: dict) -> None:
         """Вызывается yt-dlp в worker thread."""
         now = time.monotonic()
         if self._throttle > 0 and (now - self._last_emit) < self._throttle:
-            if progress_dict.get('status') == 'downloading':
+            if progress_dict.get("status") == "downloading":
                 return  # Throttle downloading events
         self._last_emit = now
         event = ProgressEvent.from_ytdlp(progress_dict)
         self._loop.call_soon_threadsafe(self._queue.put_nowait, event)
-    
+
     def sync_pp_hook(self, pp_dict: dict) -> None:
         """Вызывается postprocessor'ами yt-dlp."""
         event = ProgressEvent.from_postprocessor(pp_dict)
         self._loop.call_soon_threadsafe(self._queue.put_nowait, event)
-    
+
     async def __aiter__(self):
         while True:
             event = await self._queue.get()
@@ -413,6 +413,7 @@ close() / __aexit__()
 @dataclass(frozen=True)
 class MediaInfo:
     """Метаданные медиа-контента."""
+
     id: str
     title: str
     description: str | None
@@ -434,25 +435,25 @@ class MediaInfo:
     age_limit: int | None
     categories: list[str]
     tags: list[str]
-    
+
     # Playlist-specific
     is_playlist: bool
     entries: list[MediaInfo] | None
     playlist_count: int | None
-    
+
     # Format information
     formats: list[FormatInfo]
     requested_formats: list[FormatInfo] | None
     subtitles: dict[str, list[SubtitleInfo]]
     thumbnails: list[ThumbnailInfo]
-    
+
     # Raw yt-dlp dict (dict-like, может быть не JSON-serializable)
     raw_data: dict[str, Any]
-    
+
     def to_dict(self) -> dict[str, Any]:
         """JSON-serializable представление (через sanitize_info)."""
         ...
-    
+
     @classmethod
     def from_ytdlp(cls, info_dict: dict[str, Any]) -> MediaInfo:
         """Создание из raw yt-dlp info_dict."""
@@ -473,10 +474,10 @@ class FormatInfo:
     acodec: str | None
     filesize: int | None
     filesize_approx: int | None
-    tbr: float | None       # Total bitrate
-    vbr: float | None       # Video bitrate
-    abr: float | None       # Audio bitrate
-    asr: int | None          # Audio sample rate
+    tbr: float | None  # Total bitrate
+    vbr: float | None  # Video bitrate
+    abr: float | None  # Audio bitrate
+    asr: int | None  # Audio sample rate
     format_note: str | None
     protocol: str | None
     resolution: str | None
@@ -534,9 +535,9 @@ class ProgressEvent:
 class DownloadStatus(Enum):
     EXTRACTING = "extracting"
     DOWNLOADING = "downloading"
-    FINISHED = "finished"            # Скачивание завершено
+    FINISHED = "finished"  # Скачивание завершено
     POST_PROCESSING = "post_processing"
-    COMPLETE = "complete"            # Вся операция завершена
+    COMPLETE = "complete"  # Вся операция завершена
     ERROR = "error"
     CANCELLED = "cancelled"
 ```
@@ -548,35 +549,48 @@ class DownloadStatus(Enum):
 ```python
 class AsyncYTDLPError(Exception):
     """Базовое исключение async-yt-dlp."""
+
     url: str | None
     job_id: str | None
 
+
 class ExtractionError(AsyncYTDLPError):
     """Ошибка извлечения метаданных."""
+
     # Маппится из yt_dlp ExtractorError, GeoRestrictedError, UserNotLive
+
 
 class DownloadError(AsyncYTDLPError):
     """Ошибка скачивания."""
+
     # Маппится из yt_dlp DownloadError
+
 
 class PostProcessingError(AsyncYTDLPError):
     """Ошибка постобработки."""
+
     # Маппится из yt_dlp PostProcessingError
+
 
 class ConfigurationError(AsyncYTDLPError):
     """Ошибка конфигурации."""
 
+
 class ValidationError(AsyncYTDLPError):
     """Ошибка валидации входных данных."""
+
 
 class TimeoutError(AsyncYTDLPError):
     """Превышен таймаут операции."""
 
+
 class CancellationError(AsyncYTDLPError):
     """Операция отменена."""
 
+
 class DependencyError(AsyncYTDLPError):
     """Отсутствует внешняя зависимость (ffmpeg, и т.д.)."""
+
 
 class LifecycleError(AsyncYTDLPError):
     """Неправильное использование lifecycle."""
@@ -649,14 +663,27 @@ class YTDLPLoggerAdapter:
 ### 10.2 Redaction
 
 ```python
-SENSITIVE_KEYS = frozenset({
-    "password", "videopassword", "username", "twofactor",
-    "client_certificate_password", "proxy", "cookiefile",
-})
+SENSITIVE_KEYS = frozenset(
+    {
+        "password",
+        "videopassword",
+        "username",
+        "twofactor",
+        "client_certificate_password",
+        "proxy",
+        "cookiefile",
+    }
+)
 
-SENSITIVE_HEADERS = frozenset({
-    "authorization", "cookie", "set-cookie", "proxy-authorization",
-})
+SENSITIVE_HEADERS = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "proxy-authorization",
+    }
+)
+
 
 def redact_options(options: dict) -> dict:
     """Маскирует секретные данные для логирования."""
@@ -674,14 +701,15 @@ class ClientState(Enum):
     CLOSING = "closing"
     CLOSED = "closed"
 
+
 class AsyncYTDLP:
     async def __aenter__(self) -> Self:
         self._state = ClientState.RUNNING
         return self
-    
+
     async def __aexit__(self, *exc) -> None:
         await self.close()
-    
+
     async def close(self) -> None:
         if self._state == ClientState.CLOSED:
             return
@@ -689,7 +717,7 @@ class AsyncYTDLP:
         # Ожидаем завершения активных операций
         await self._manager.shutdown()
         self._state = ClientState.CLOSED
-    
+
     def _ensure_running(self) -> None:
         if self._state != ClientState.RUNNING:
             raise LifecycleError(

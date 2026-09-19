@@ -48,6 +48,7 @@ async for event in ytdlp.download_with_progress(url, throttle_interval=0.5):
 async def my_callback(event: ProgressEvent):
     await websocket.send_json({"percent": event.percent, "speed": event.speed_str})
 
+
 result = await ytdlp.download(url, on_progress=my_callback)
 ```
 

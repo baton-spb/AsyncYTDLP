@@ -30,6 +30,7 @@
 import asyncio
 from async_yt_dlp import AsyncYTDLP
 
+
 async def download_with_timeout(url: str):
     async with AsyncYTDLP() as ytdlp:
         try:

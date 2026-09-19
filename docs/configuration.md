@@ -23,8 +23,8 @@ YTDLPOptions(
     output_path=Path("/var/media/downloads"),
     temp_path=Path("/tmp/ytdlp_cache"),
     restrict_filenames=True,  # Только ASCII символы
-    windows_filenames=True,   # Совместимость с файловой системой Windows
-    no_overwrites=True,       # Не перезаписывать уже существующие файлы
+    windows_filenames=True,  # Совместимость с файловой системой Windows
+    no_overwrites=True,  # Не перезаписывать уже существующие файлы
 )
 ```
 
@@ -33,7 +33,7 @@ YTDLPOptions(
 YTDLPOptions(
     proxy="socks5://127.0.0.1:1080",
     socket_timeout=30.0,
-    impersonate="chrome",     # Маскировка TLS-fingerprint через curl_cffi
+    impersonate="chrome",  # Маскировка TLS-fingerprint через curl_cffi
     http_headers={
         "User-Agent": "Custom-Agent/1.0",
         "Referer": "https://example.com",
@@ -55,11 +55,11 @@ YTDLPOptions(
 ```python
 YTDLPOptions(
     extract_audio=True,
-    audio_format="mp3",       # mp3, m4a, flac, opus, wav
+    audio_format="mp3",  # mp3, m4a, flac, opus, wav
     audio_quality="192K",
-    embed_thumbnail=True,     # Встроить обложку в аудио/видео
-    embed_metadata=True,      # Записать теги (название, автор, альбом)
-    embed_subtitles=True,     # Встроить субтитры в контейнер
+    embed_thumbnail=True,  # Встроить обложку в аудио/видео
+    embed_metadata=True,  # Записать теги (название, автор, альбом)
+    embed_subtitles=True,  # Встроить субтитры в контейнер
     ffmpeg_location=Path("/opt/homebrew/bin/ffmpeg"),
 )
 ```

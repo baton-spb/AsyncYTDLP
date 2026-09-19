@@ -17,7 +17,7 @@ from async_yt_dlp import AsyncYTDLP
 
 ytdlp = AsyncYTDLP(
     max_concurrency=4,  # Не более 4 параллельно работающих потоков yt-dlp
-    queue_size=100,     # До 100 запросов могут ожидать своей очереди в семафоре
+    queue_size=100,  # До 100 запросов могут ожидать своей очереди в семафоре
 )
 ```
 
@@ -38,6 +38,7 @@ ytdlp = AsyncYTDLP(
 ```python
 import asyncio
 from async_yt_dlp import AsyncYTDLP, ErrorPolicy
+
 
 async def main():
     urls = [

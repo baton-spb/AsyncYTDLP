@@ -80,6 +80,7 @@ def __enter__(self):
     self.save_console_title()
     return self
 
+
 def __exit__(self, *args):
     self.restore_console_title()
     self.close()
@@ -165,14 +166,14 @@ def __exit__(self, *args):
 
 ```python
 POSTPROCESS_WHEN = (
-    'pre_process',     # До начала обработки
-    'after_filter',    # После фильтрации
-    'video',           # Для каждого видео (после загрузки)
-    'before_dl',       # Перед загрузкой
-    'post_process',    # Основная постобработка (default)
-    'after_move',      # После перемещения файла
-    'after_video',     # После всего цикла для видео
-    'playlist',        # Для всего плейлиста
+    "pre_process",  # До начала обработки
+    "after_filter",  # После фильтрации
+    "video",  # Для каждого видео (после загрузки)
+    "before_dl",  # Перед загрузкой
+    "post_process",  # Основная постобработка (default)
+    "after_move",  # После перемещения файла
+    "after_video",  # После всего цикла для видео
+    "playlist",  # Для всего плейлиста
 )
 ```
 

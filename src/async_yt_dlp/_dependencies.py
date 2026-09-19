@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import functools
+import importlib.util
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -35,6 +36,10 @@ class DependencyInfo:
     ffmpeg_path: Path | None = None
     ffprobe_path: Path | None = None
     js_runtimes: tuple[str, ...] = ()
+    has_curl_cffi: bool = False
+    has_crypto: bool = False
+    has_mutagen: bool = False
+    has_ejs: bool = False
 
     @property
     def has_ffmpeg_suite(self) -> bool:
@@ -125,6 +130,15 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
         if shutil.which(rt):
             found_runtimes.append(rt)
 
+    # 4. Проверка дополнительных Python-пакетов yt-dlp
+    has_curl = importlib.util.find_spec("curl_cffi") is not None
+    has_crypto = (
+        importlib.util.find_spec("Cryptodome") is not None
+        or importlib.util.find_spec("cryptography") is not None
+    )
+    has_mutagen = importlib.util.find_spec("mutagen") is not None
+    has_ejs = importlib.util.find_spec("yt_dlp_ejs") is not None
+
     return DependencyInfo(
         ytdlp_version=ytdlp_ver,
         ffmpeg_available=ffmpeg_bin is not None,
@@ -133,6 +147,10 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
         ffmpeg_path=ffmpeg_bin,
         ffprobe_path=ffprobe_bin,
         js_runtimes=tuple(found_runtimes),
+        has_curl_cffi=has_curl,
+        has_crypto=has_crypto,
+        has_mutagen=has_mutagen,
+        has_ejs=has_ejs,
     )
 
 

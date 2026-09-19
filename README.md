@@ -61,12 +61,14 @@ uv add async-yt-dlp
 import asyncio
 from async_yt_dlp import AsyncYTDLP
 
+
 async def main():
     async with AsyncYTDLP() as ytdlp:
         info = await ytdlp.extract_info("https://www.youtube.com/watch?v=BaW_jenozKc")
         print(f"🎬 {info.title}")
         print(f"👤 Автор: {info.uploader}")
         print(f"⏱ Длительность: {info.duration_seconds} сек.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -77,6 +79,7 @@ if __name__ == "__main__":
 import asyncio
 from pathlib import Path
 from async_yt_dlp import AsyncYTDLP, YTDLPOptions
+
 
 async def main():
     options = YTDLPOptions(
@@ -89,6 +92,7 @@ async def main():
         result = await ytdlp.download("https://www.youtube.com/watch?v=BaW_jenozKc")
         print(f"✅ Файл сохранен: {result.filepath} ({result.file_size} байт)")
 
+
 if __name__ == "__main__":
     asyncio.run(main())
 ```
@@ -98,15 +102,20 @@ if __name__ == "__main__":
 import asyncio
 from async_yt_dlp import AsyncYTDLP, DownloadStatus
 
+
 async def main():
     async with AsyncYTDLP() as ytdlp:
         url = "https://www.youtube.com/watch?v=BaW_jenozKc"
-        
+
         async for event in ytdlp.download_with_progress(url, throttle_interval=0.5):
             if event.status == DownloadStatus.DOWNLOADING:
-                print(f"\rЗагрузка: {event.percent:.1f}% | {event.speed_str} | ETA: {event.eta_str}", end="")
+                print(
+                    f"\rЗагрузка: {event.percent:.1f}% | {event.speed_str} | ETA: {event.eta_str}",
+                    end="",
+                )
             elif event.status == DownloadStatus.COMPLETE:
                 print("\nГотово!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

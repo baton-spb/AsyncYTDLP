@@ -99,6 +99,7 @@ class YTDLPOptions:
     simulate: bool | None = None
     skip_download: bool | None = None
     extractor_args: dict[str, Any] | None = None
+    js_runtimes: tuple[str, ...] | list[str] | dict[str, Any] | None = None
 
     # Логирование и консольный вывод (по умолчанию выключены для библиотечного использования)
     quiet: bool = True
@@ -221,6 +222,11 @@ class YTDLPOptions:
             params["extract_flat"] = self.extract_flat
         if self.extractor_args is not None:
             params["extractor_args"] = dict(self.extractor_args)
+        if self.js_runtimes is not None:
+            if isinstance(self.js_runtimes, dict):
+                params["js_runtimes"] = self.js_runtimes
+            else:
+                params["js_runtimes"] = {rt: {} for rt in self.js_runtimes}
 
         # Субтитры и миниатюры
         if self.write_subtitles is not None:
@@ -457,6 +463,7 @@ class YTDLPOptions:
             if other.skip_download is not None
             else self.skip_download,
             extractor_args=merged_extractor_args if merged_extractor_args else None,
+            js_runtimes=other.js_runtimes if other.js_runtimes is not None else self.js_runtimes,
             quiet=other.quiet,
             no_warnings=other.no_warnings,
             verbose=other.verbose,

@@ -122,3 +122,21 @@ def test_to_safe_dict_redaction():
     assert safe["username"] == "********"
     assert safe["cookiefile"] == "********"
     assert safe["proxy"] == "http://user:********@proxy.org:8080"
+
+
+def test_js_runtimes_options():
+    # 1. Tuple / List format
+    opts = YTDLPOptions(js_runtimes=("deno", "node"))
+    params = opts.to_ytdlp_params()
+    assert params["js_runtimes"] == {"deno": {}, "node": {}}
+
+    # 2. Dict format
+    opts_dict = YTDLPOptions(js_runtimes={"bun": {"path": "/usr/bin/bun"}})
+    params_dict = opts_dict.to_ytdlp_params()
+    assert params_dict["js_runtimes"] == {"bun": {"path": "/usr/bin/bun"}}
+
+    # 3. Merge
+    base = YTDLPOptions(js_runtimes=("deno",))
+    override = YTDLPOptions(js_runtimes=("node",))
+    merged = base.merge(override)
+    assert merged.js_runtimes == ("node",)

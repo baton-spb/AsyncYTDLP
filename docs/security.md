@@ -27,7 +27,9 @@
 
 ```python
 # Попытка передать локальный путь вызовет ValidationError
-await ytdlp.download("file:///etc/passwd")  # ValidationError: Схема 'file://' отключена по умолчанию
+await ytdlp.download(
+    "file:///etc/passwd"
+)  # ValidationError: Схема 'file://' отключена по умолчанию
 ```
 
 Если вашему доверенному приложению действительно требуется локальная обработка файлов, включите флаг явно:

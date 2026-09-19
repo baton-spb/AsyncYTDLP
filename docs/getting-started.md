@@ -32,14 +32,16 @@ uv add async-yt-dlp
 import asyncio
 from async_yt_dlp import AsyncYTDLP
 
+
 async def main():
     async with AsyncYTDLP() as ytdlp:
         info = await ytdlp.extract_info("https://www.youtube.com/watch?v=BaW_jenozKc")
-        
+
         print(f"Название:     {info.title}")
         print(f"Автор:        {info.uploader}")
         print(f"Длительность: {info.duration_seconds} сек.")
         print(f"Форматов:     {len(info.formats)}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -56,6 +58,7 @@ import asyncio
 from pathlib import Path
 from async_yt_dlp import AsyncYTDLP, YTDLPOptions
 
+
 async def main():
     options = YTDLPOptions(
         format="bestvideo[height<=720]+bestaudio/best[height<=720]",
@@ -65,10 +68,11 @@ async def main():
 
     async with AsyncYTDLP(default_options=options) as ytdlp:
         result = await ytdlp.download("https://www.youtube.com/watch?v=BaW_jenozKc")
-        
+
         print(f"Файл сохранен: {result.filepath}")
         print(f"Размер:        {result.file_size / (1024 * 1024):.2f} MiB")
         print(f"Время:         {result.elapsed:.2f} сек.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -84,17 +88,21 @@ if __name__ == "__main__":
 import asyncio
 from async_yt_dlp import AsyncYTDLP, DownloadStatus
 
+
 async def main():
     async with AsyncYTDLP() as ytdlp:
         url = "https://www.youtube.com/watch?v=BaW_jenozKc"
-        
+
         async for event in ytdlp.download_with_progress(url, throttle_interval=0.5):
             if event.status == DownloadStatus.DOWNLOADING:
-                print(f"Загрузка: {event.percent:.1f}% | Скорость: {event.speed_str} | ETA: {event.eta_str}")
+                print(
+                    f"Загрузка: {event.percent:.1f}% | Скорость: {event.speed_str} | ETA: {event.eta_str}"
+                )
             elif event.status == DownloadStatus.POST_PROCESSING:
                 print(f"Постобработка: {event.postprocessor}...")
             elif event.status == DownloadStatus.COMPLETE:
                 print("Готово!")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -110,6 +118,7 @@ if __name__ == "__main__":
 import asyncio
 from async_yt_dlp import AsyncYTDLP
 
+
 async def main():
     async with AsyncYTDLP() as ytdlp:
         deps = await ytdlp.check_dependencies()
@@ -117,6 +126,7 @@ async def main():
         print(f"ffmpeg доступен:  {deps.ffmpeg_available} ({deps.ffmpeg_path})")
         print(f"ffprobe доступен: {deps.ffprobe_available}")
         print(f"JS движки:        {deps.js_runtimes}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

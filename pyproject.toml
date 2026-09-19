@@ -31,6 +31,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+full = [
+    "brotli>=1.0.0",
+    "certifi>=2024.01.01",
+    "curl-cffi>=0.5.10",
+    "deno>=2.0.0",
+    "mutagen>=1.47.0",
+    "pycryptodomex>=3.20.0",
+    "requests>=2.31.0",
+    "urllib3>=2.0.0",
+    "websockets>=13.0",
+    "yt-dlp-ejs>=0.8.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",

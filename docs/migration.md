@@ -38,12 +38,13 @@ async with AsyncYTDLP() as ytdlp:
 #### Раньше (yt-dlp):
 ```python
 def my_hook(d):
-    if d['status'] == 'downloading':
-        print(d.get('_percent_str'))
+    if d["status"] == "downloading":
+        print(d.get("_percent_str"))
+
 
 ydl_opts = {
-    'format': 'best',
-    'progress_hooks': [my_hook],  # Вызывается синхронно в потоке, сложно связать с async loop
+    "format": "best",
+    "progress_hooks": [my_hook],  # Вызывается синхронно в потоке, сложно связать с async loop
 }
 
 with YoutubeDL(ydl_opts) as ydl:
