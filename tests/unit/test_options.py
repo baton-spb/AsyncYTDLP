@@ -140,3 +140,18 @@ def test_js_runtimes_options():
     override = YTDLPOptions(js_runtimes=("node",))
     merged = base.merge(override)
     assert merged.js_runtimes == ("node",)
+
+
+def test_auto_detect_js_runtimes():
+    from unittest.mock import MagicMock, patch
+
+    mock_dep = MagicMock(js_runtimes=("node",))
+    with patch("async_yt_dlp._dependencies.check_dependencies", return_value=mock_dep):
+        opts = YTDLPOptions(auto_detect_js=True)
+        params = opts.to_ytdlp_params()
+        assert params.get("js_runtimes") == {"node": {}}
+
+    with patch("async_yt_dlp._dependencies.check_dependencies", return_value=mock_dep):
+        opts_disabled = YTDLPOptions(auto_detect_js=False)
+        params_disabled = opts_disabled.to_ytdlp_params()
+        assert "js_runtimes" not in params_disabled

@@ -76,3 +76,21 @@ def test_ytdlp_logger_adapter():
     assert ("INFO", "[download] Destination: video.mp4") in records
     assert ("WARNING", "Deprecated extractor option") in records
     assert ("ERROR", "Failed to connect") in records
+
+
+def test_ytdlp_logger_adapter_no_warnings():
+    records: list[tuple[str, str]] = []
+
+    class MockHandler(logging.Handler):
+        def emit(self, record: logging.LogRecord):
+            records.append((record.levelname, record.getMessage()))
+
+    test_logger = logging.getLogger("test_adapter_no_warnings_logger")
+    test_logger.setLevel(logging.DEBUG)
+    test_logger.addHandler(MockHandler())
+
+    adapter = YTDLPLoggerAdapter(test_logger, no_warnings=True)
+    adapter.warning("Some warning message")
+
+    assert ("WARNING", "Some warning message") not in records
+    assert any(level == "DEBUG" and "Some warning message" in msg for level, msg in records)

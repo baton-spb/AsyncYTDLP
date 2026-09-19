@@ -121,13 +121,21 @@ class YTDLPLoggerAdapter:
     - Прочие сообщения в `debug()` являются информационными и переводятся в `logger.info()`.
     """
 
-    def __init__(self, target_logger: logging.Logger | None = None) -> None:
+    def __init__(
+        self,
+        target_logger: logging.Logger | None = None,
+        *,
+        no_warnings: bool = False,
+    ) -> None:
         """Инициализирует адаптер логирования для сообщений yt-dlp.
 
         Args:
             target_logger: Экземпляр standard Logger. Если None, используется логгер библиотеки по умолчанию.
+            no_warnings: Если True, предупреждения не передаются в логгер на уровне WARNING,
+                         а понижаются до DEBUG, исключая спам в консоль.
         """
         self._logger = target_logger or logger
+        self._no_warnings = no_warnings
 
     def debug(self, msg: str) -> None:
         """Обработка отладочных сообщений от yt-dlp."""
@@ -145,7 +153,11 @@ class YTDLPLoggerAdapter:
 
     def warning(self, msg: str) -> None:
         """Обработка предупреждений от yt-dlp."""
-        if msg:
+        if not msg:
+            return
+        if self._no_warnings:
+            self._logger.debug("yt-dlp warning: %s", msg)
+        else:
             self._logger.warning(msg)
 
     def error(self, msg: str) -> None:

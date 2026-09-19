@@ -159,7 +159,8 @@ class ThreadBackend:
 
         # Настройка адаптера логирования, если пользователь не указал свой
         if "logger" not in opts:
-            opts["logger"] = YTDLPLoggerAdapter()
+            no_warn = bool(opts.get("no_warnings", False))
+            opts["logger"] = YTDLPLoggerAdapter(no_warnings=no_warn)
 
         with YoutubeDL(opts) as ydl:
             result = ydl.extract_info(url, download=download, extra_info=extra_info)
@@ -186,7 +187,8 @@ class ThreadBackend:
         self._ensure_ffmpeg_location(opts)
 
         if "logger" not in opts:
-            opts["logger"] = YTDLPLoggerAdapter()
+            no_warn = bool(opts.get("no_warnings", False))
+            opts["logger"] = YTDLPLoggerAdapter(no_warnings=no_warn)
 
         # Регистрация хуков прогресса в словарь параметров
         if progress_bridge:

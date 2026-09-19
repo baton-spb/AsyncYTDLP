@@ -105,6 +105,7 @@ class YTDLPOptions:
     skip_download: bool | None = None
     extractor_args: dict[str, object] | None = None
     js_runtimes: tuple[str, ...] | list[str] | dict[str, object] | None = None
+    auto_detect_js: bool = True
 
     # Логирование и консольный вывод (по умолчанию выключены для библиотечного использования)
     quiet: bool = True
@@ -269,6 +270,13 @@ class YTDLPOptions:
                 params["js_runtimes"] = self.js_runtimes
             else:
                 params["js_runtimes"] = {rt: {} for rt in self.js_runtimes}
+        elif self.auto_detect_js:
+            # Автоматически подключаем обнаруженные в системе JS runtimes (deno, node, bun и т.д.)
+            from async_yt_dlp._dependencies import check_dependencies
+
+            detected_runtimes = check_dependencies().js_runtimes
+            if detected_runtimes:
+                params["js_runtimes"] = {rt: {} for rt in detected_runtimes}
 
         # Субтитры и миниатюры
         if self.write_subtitles is not None:
@@ -509,6 +517,7 @@ class YTDLPOptions:
             else self.skip_download,
             extractor_args=merged_extractor_args if merged_extractor_args else None,
             js_runtimes=other.js_runtimes if other.js_runtimes is not None else self.js_runtimes,
+            auto_detect_js=other.auto_detect_js,
             quiet=other.quiet,
             no_warnings=other.no_warnings,
             verbose=other.verbose,
