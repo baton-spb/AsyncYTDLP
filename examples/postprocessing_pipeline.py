@@ -1,4 +1,4 @@
-"""Пример совместного использования AsyncYT-DLP и AsyncFFmpeg: постобработка и сжатие."""
+"""Пример совместного использования AsyncYT-DLP и aio-ffmpeg: постобработка и сжатие."""
 
 from __future__ import annotations
 

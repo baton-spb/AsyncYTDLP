@@ -20,23 +20,27 @@ from async_yt_dlp.exceptions import DependencyError, PostProcessingError
 from async_yt_dlp.models import DownloadResult
 
 if TYPE_CHECKING:
-    from async_ffmpeg.client import FFmpegClient
+    from aio_ffmpeg.client import FFmpegClient
 
 
-def _require_async_ffmpeg() -> None:
-    """Проверяет доступность библиотеки `async-ffmpeg` в текущем окружении.
+def _require_aio_ffmpeg() -> None:
+    """Проверяет доступность библиотеки `aio-ffmpeg` в текущем окружении.
 
     Raises:
-        DependencyError: Если пакет `async-ffmpeg` не установлен.
+        DependencyError: Если пакет `aio-ffmpeg` не установлен.
     """
     if (
-        importlib.util.find_spec("async_ffmpeg") is None
-        and importlib.util.find_spec("aio_ffmpeg") is None
+        importlib.util.find_spec("aio_ffmpeg") is None
+        and importlib.util.find_spec("async_ffmpeg") is None
     ):
         raise DependencyError(
             "Для использования модуля postprocess требуется установить пакет aio-ffmpeg. "
             "Выполните: uv add async-yt-dlp[ffmpeg] или uv add aio-ffmpeg."
         )
+
+
+# Псевдоним для обратной совместимости
+_require_async_ffmpeg = _require_aio_ffmpeg
 
 
 def _resolve_source_info(
@@ -125,8 +129,8 @@ class CompressToSize:
             DependencyError: Если библиотека async-ffmpeg не установлена.
             PostProcessingError: Если не удалось рассчитать параметры или выполнить сжатие.
         """
-        _require_async_ffmpeg()
-        from async_ffmpeg.client import FFmpegClient as ClientCls
+        _require_aio_ffmpeg()
+        from aio_ffmpeg.client import FFmpegClient as ClientCls
 
         cli = client if client is not None else ClientCls()
         source_path, title, duration = _resolve_source_info(source)
@@ -379,8 +383,8 @@ class PostDownloadPipeline:
             DependencyError: Если async-ffmpeg не установлен.
             PostProcessingError: При ошибке выполнения FFmpeg.
         """
-        _require_async_ffmpeg()
-        from async_ffmpeg.client import FFmpegClient as ClientCls
+        _require_aio_ffmpeg()
+        from aio_ffmpeg.client import FFmpegClient as ClientCls
 
         cli = self._client if self._client is not None else ClientCls()
         source_path, title, _duration = _resolve_source_info(download)

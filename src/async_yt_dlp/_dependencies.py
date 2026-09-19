@@ -42,6 +42,7 @@ class DependencyInfo:
     has_crypto: bool = False
     has_mutagen: bool = False
     has_ejs: bool = False
+    has_aio_ffmpeg: bool = False
     has_async_ffmpeg: bool = False
 
     @property
@@ -135,15 +136,20 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
                 return c
         return None
 
-    # Попытка обнаружения через async_ffmpeg / aio_ffmpeg (если установлен)
-    has_async_ffmpeg = (
-        importlib.util.find_spec("async_ffmpeg") is not None
-        or importlib.util.find_spec("aio_ffmpeg") is not None
+    # Попытка обнаружения через aio_ffmpeg / async_ffmpeg (если установлен)
+    has_aio_ffmpeg = (
+        importlib.util.find_spec("aio_ffmpeg") is not None
+        or importlib.util.find_spec("async_ffmpeg") is not None
     )
-    if has_async_ffmpeg:
+    has_async_ffmpeg = has_aio_ffmpeg
+    if has_aio_ffmpeg:
         try:
-            from async_ffmpeg import find_ffmpeg as aff_find_ffmpeg
-            from async_ffmpeg import find_ffprobe as aff_find_ffprobe
+            try:
+                from aio_ffmpeg import find_ffmpeg as aff_find_ffmpeg
+                from aio_ffmpeg import find_ffprobe as aff_find_ffprobe
+            except ImportError:
+                from async_ffmpeg import find_ffmpeg as aff_find_ffmpeg
+                from async_ffmpeg import find_ffprobe as aff_find_ffprobe
 
             if not ffmpeg_bin:
                 try:
@@ -176,9 +182,12 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
 
     ffmpeg_ver: str | None = None
     if ffmpeg_bin:
-        if has_async_ffmpeg:
+        if has_aio_ffmpeg:
             try:
-                from async_ffmpeg import get_binary_version_sync
+                try:
+                    from aio_ffmpeg import get_binary_version_sync
+                except ImportError:
+                    from async_ffmpeg import get_binary_version_sync
 
                 ffmpeg_ver = get_binary_version_sync(ffmpeg_bin)
             except Exception:
@@ -213,6 +222,7 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
         has_crypto=has_crypto,
         has_mutagen=has_mutagen,
         has_ejs=has_ejs,
+        has_aio_ffmpeg=has_aio_ffmpeg,
         has_async_ffmpeg=has_async_ffmpeg,
     )
 
