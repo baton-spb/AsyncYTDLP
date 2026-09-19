@@ -102,6 +102,7 @@ known-first-party = ["async_yt_dlp"]
 
 [tool.mypy]
 python_version = "3.14"
+files = ["src"]
 strict = true
 warn_unused_configs = true
 warn_redundant_casts = true
