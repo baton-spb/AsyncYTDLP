@@ -1,12 +1,13 @@
 # Быстрый старт с async-yt-dlp
 
-Добро пожаловать в руководство по началу работы с библиотекой `async-yt-dlp`!
+Руководство по началу работы с библиотекой `async-yt-dlp`.
 
 ## Требования
 
-- **Python**: 3.14 или новее.
+- **Python**: 3.11 или новее.
 - **yt-dlp**: 2024.01.01 или новее.
-- **ffmpeg** и **ffprobe** (опционально, но настоятельно рекомендуется для слияния аудио/видео и конвертации форматов).
+- **ffmpeg** и **ffprobe** (опционально, но рекомендуется для слияния аудио/видео и конвертации форматов).
+- **Среда JavaScript** (Node.js, Deno или Bun) — рекомендуется для извлечения YouTube без ограничений по скорости и форматам.
 
 ---
 
@@ -30,10 +31,15 @@ uv add async-yt-dlp
 
 ```python
 import asyncio
+import sys
 from async_yt_dlp import AsyncYTDLP
 
+# Корректный вывод Unicode/эмодзи в консоли Windows
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
 
-async def main():
+
+async def main() -> None:
     async with AsyncYTDLP() as ytdlp:
         info = await ytdlp.extract_info("https://www.youtube.com/watch?v=BaW_jenozKc")
 
@@ -47,23 +53,33 @@ if __name__ == "__main__":
     asyncio.run(main())
 ```
 
+> [!NOTE]
+> Начиная с версии `0.1.4`, библиотека автоматически обнаруживает установленные в системе среды JavaScript (Node.js, Deno, Bun) и передает их ядру `yt-dlp`. Предупреждения об отсутствии JS-рантайма подавляются автоматически.
+
 ---
 
-## Скачивание видеофайла
+## Скачивание видеофайла с объектной конфигурацией
 
-Метод `download` скачивает ресурс и возвращает объект `DownloadResult` с финальным путем к готовому файлу:
+Метод `download` скачивает ресурс и возвращает объект `DownloadResult` с путем к итоговому файлу:
 
 ```python
 import asyncio
 from pathlib import Path
-from async_yt_dlp import AsyncYTDLP, YTDLPOptions
+from async_yt_dlp import (
+    AsyncYTDLP,
+    FormatSelector,
+    OutputTemplate,
+    VideoContainer,
+    YTDLPOptions,
+)
 
 
-async def main():
+async def main() -> None:
     options = YTDLPOptions(
-        format="bestvideo[height<=720]+bestaudio/best[height<=720]",
+        format=FormatSelector.preset_720p(container=VideoContainer.MP4),
+        container=VideoContainer.MP4,
         output_path=Path("./downloads"),
-        output_template="%(title)s.%(ext)s",
+        output_template=OutputTemplate.title_only(),
     )
 
     async with AsyncYTDLP(default_options=options) as ytdlp:
@@ -82,26 +98,27 @@ if __name__ == "__main__":
 
 ## Отслеживание прогресса в реальном времени
 
-Для приложений с графическим интерфейсом, ботов или веб-сервисов доступен асинхронный генератор `download_with_progress`:
+Для приложений с графическим интерфейсом, Telegram-ботов или веб-сервисов доступен асинхронный генератор `download_with_progress`:
 
 ```python
 import asyncio
 from async_yt_dlp import AsyncYTDLP, DownloadStatus
 
 
-async def main():
+async def main() -> None:
     async with AsyncYTDLP() as ytdlp:
         url = "https://www.youtube.com/watch?v=BaW_jenozKc"
 
         async for event in ytdlp.download_with_progress(url, throttle_interval=0.5):
             if event.status == DownloadStatus.DOWNLOADING:
                 print(
-                    f"Загрузка: {event.percent:.1f}% | Скорость: {event.speed_str} | ETA: {event.eta_str}"
+                    f"\rЗагрузка: {event.percent:.1f}% | {event.speed_str} | ETA: {event.eta_str}",
+                    end="",
                 )
             elif event.status == DownloadStatus.POST_PROCESSING:
-                print(f"Постобработка: {event.postprocessor}...")
+                print(f"\nПостобработка: {event.postprocessor}...")
             elif event.status == DownloadStatus.COMPLETE:
-                print("Готово!")
+                print("\nГотово!")
 
 
 if __name__ == "__main__":
@@ -119,7 +136,7 @@ import asyncio
 from async_yt_dlp import AsyncYTDLP
 
 
-async def main():
+async def main() -> None:
     async with AsyncYTDLP() as ytdlp:
         deps = await ytdlp.check_dependencies()
         print(f"Версия yt-dlp:    {deps.ytdlp_version}")
@@ -139,3 +156,4 @@ if __name__ == "__main__":
 - Ознакомьтесь с [Архитектурой библиотеки](architecture.md).
 - Узнайте о возможностях типизированной [Конфигурации](configuration.md).
 - Изучите особенности [Параллельности](concurrency.md) и [Отмены задач](cancellation.md).
+- Ознакомьтесь с решениями типовых проблем в [Устранении неполадок](troubleshooting.md).

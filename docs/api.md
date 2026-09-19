@@ -141,3 +141,54 @@ async def download_many(
 - `speed_str` (`str`): форматированная скорость (например, '2.45 MiB/s').
 - `eta_str` (`str`): форматированное время (например, '01:23').
 - `postprocessor` (`str | None`): название текущего постпроцессора.
+
+---
+
+## 3. Классы конфигурации
+
+### `YTDLPOptions` (frozen dataclass)
+- `format` (`FormatSelector | str | None`): селектор формата (объект или строка).
+- `output_template` (`OutputTemplate | str | None`): шаблон имени файла.
+- `output_path` (`Path | None`): директория сохранения.
+- `container` (`VideoContainer | str | None`): принудительный медиа-контейнер (remux через ffmpeg).
+- `auto_detect_js` (`bool`): автоматический поиск в системе и подключение JS-рантаймов (`Node.js`, `Deno`, `Bun`) для YouTube EJS. По умолчанию `True`.
+- `js_runtimes` (`dict[str, dict[str, Any]] | None`): явная конфигурация сред исполнения JS.
+- `no_warnings` (`bool`): перенаправление служебных предупреждений ядра в уровень DEBUG (исключение шума в терминале). По умолчанию `True`.
+- `quiet` (`bool`): подавление стандартных информационных сообщений `yt-dlp`.
+- `extract_audio` (`bool`): флаг извлечения только аудиопотока.
+- `audio_format` (`AudioFormat | str | None`): целевой формат аудио (`mp3`, `m4a`, `flac`, `opus`, `wav`).
+- `ffmpeg_location` (`Path | str | None`): путь к исполняемому файлу ffmpeg.
+- `proxy` (`str | None`): URL прокси-сервера.
+- `raw_options` (`dict[str, Any]`): словарь низкоуровневых параметров `yt-dlp` наивысшего приоритета.
+- `merge(other: YTDLPOptions) -> YTDLPOptions`: объединение двух конфигураций.
+- `to_safe_dict() -> dict[str, Any]`: маскированное представление для безопасного логирования.
+
+### `FormatSelector`
+- **Пресеты**: `preset_720p()`, `preset_1080p()`, `preset_audio_only(ext)`, `preset_max_quality()`.
+- **Конструкторы**: `FormatSelector.video()`, `FormatSelector.audio()`.
+- **Fluent-методы**: `max_height(h)`, `min_height(h)`, `ext(extension)`, `codec(vcodec)`, `fps(rate)`, `merge(audio_selector)`.
+- `build() -> str`: генерация валидной строки селектора формата `yt-dlp`.
+
+### `OutputTemplate`
+- **Пресеты**: `title_only()`, `title_and_id()`, `dated()`, `playlist_folder()`, `channel_folder()`.
+- **Fluent-методы**: `title()`, `id()`, `ext()`, `channel()`, `uploader()`, `dir()`, `custom(spec)`.
+- **Оператор `/`**: конкатенация каталогов и шаблонов (`OutputTemplate().channel() / OutputTemplate.title_only()`).
+- `build() -> str`: генерация строки шаблона.
+
+### `VideoContainer` (Enum)
+- Значения: `MP4`, `MKV`, `WEBM`, `MOV`, `AVI`, `FLV`, `TS`.
+
+---
+
+## 4. Диагностика окружения
+
+### `DependencyInfo` (frozen dataclass)
+Результат выполнения метода `await ytdlp.check_dependencies()`:
+- `ytdlp_version` (`str | None`): версия установленной библиотеки `yt-dlp`.
+- `ffmpeg_available` (`bool`): доступность `ffmpeg`.
+- `ffmpeg_path` (`str | None`): путь к бинарному файлу `ffmpeg`.
+- `ffmpeg_version` (`str | None`): версия `ffmpeg`.
+- `ffprobe_available` (`bool`): доступность `ffprobe`.
+- `has_aio_ffmpeg` (`bool`): установлен ли пакет `aio-ffmpeg` для асинхронной постобработки.
+- `js_runtimes` (`dict[str, dict[str, Any]]`): словарь обнаруженных в системе JS-рантаймов (Node.js, Deno, Bun).
+

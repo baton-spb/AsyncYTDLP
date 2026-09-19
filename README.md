@@ -23,6 +23,8 @@
 - **Объектная конфигурация**: `FormatSelector` (fluent-построитель форматов), `OutputTemplate` (построитель шаблонов имён файлов), `VideoContainer` (выбор контейнера).
 - **Маскировка данных**: пароли, токены, cookies и прокси автоматически скрываются в логах.
 - **Диагностика окружения**: `check_dependencies()` проверяет наличие `yt-dlp`, `ffmpeg`, `ffprobe` и JS-движков.
+- **Автоматический EJS (JS runtimes)**: автоматическое обнаружение Node.js, Deno, Bun в системе для работы YouTube без троттлинга (`auto_detect_js=True`).
+- **Чистые логи**: служебные предупреждения ядра yt-dlp фильтруются (`no_warnings=True`), не засоряя консоль.
 
 ---
 
@@ -54,7 +56,12 @@ uv add async-yt-dlp
 
 ```python
 import asyncio
+import sys
 from async_yt_dlp import AsyncYTDLP
+
+# Корректный вывод Unicode/эмодзи в консоли Windows
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")
 
 
 async def main() -> None:
