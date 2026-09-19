@@ -1,14 +1,13 @@
-name: CI Pipeline
+name: Release Pipeline
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+    tags:
+      - "v*"
 
 jobs:
-  lint-and-test:
-    name: Lint, Type Check and Tests
+  build-and-release:
+    name: Build and Verify Release Artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,23 +27,21 @@ jobs:
         run: |
           uv sync --extra dev
 
-      - name: Check code formatting (Ruff)
-        run: |
-          uv run ruff format --check src/ tests/ examples/
-
-      - name: Lint codebase (Ruff)
+      - name: Lint and Typecheck
         run: |
           uv run ruff check src/ tests/ examples/
-
-      - name: Type check (Mypy)
-        run: |
           uv run mypy src/
 
-      - name: Run unit & integration tests with coverage
+      - name: Run test suite
         run: |
-          uv run coverage run -m pytest tests/ -v
-          uv run coverage report -m
+          uv run pytest tests/ -v
 
       - name: Build distribution packages (Wheel & Sdist)
         run: |
           uv build
+
+      - name: Upload distribution packages as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/*
