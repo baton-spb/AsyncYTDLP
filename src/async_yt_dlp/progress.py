@@ -12,12 +12,38 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
 
 from async_yt_dlp._constants import DEFAULT_PROGRESS_QUEUE_SIZE, DEFAULT_THROTTLE_INTERVAL
+
+
+def _safe_int(val: object) -> int | None:
+    """Безопасно преобразует значение в int или возвращает None."""
+    if val is None:
+        return None
+    try:
+        return int(float(str(val)))
+    except ValueError, TypeError:
+        return None
+
+
+def _safe_float(val: object) -> float | None:
+    """Безопасно преобразует значение в float или возвращает None."""
+    if val is None:
+        return None
+    try:
+        return float(str(val))
+    except ValueError, TypeError:
+        return None
+
+
+def _safe_str(val: object) -> str | None:
+    """Безопасно преобразует значение в строку или возвращает None."""
+    if val is None:
+        return None
+    return str(val)
 
 
 class DownloadStatus(StrEnum):
@@ -138,9 +164,16 @@ class ProgressEvent:
         return _format_bytes(self.effective_total_bytes)
 
     @classmethod
-    def from_ytdlp(cls, d: dict[str, Any]) -> ProgressEvent:
-        """Создает `ProgressEvent` из словаря `progress_hooks` yt-dlp."""
-        raw_status = d.get("status", "")
+    def from_ytdlp(cls, d: Mapping[str, object]) -> ProgressEvent:
+        """Создает `ProgressEvent` из словаря `progress_hooks` yt-dlp.
+
+        Args:
+            d: Словарь прогресса от yt-dlp.
+
+        Returns:
+            Экземпляр ProgressEvent.
+        """
+        raw_status = str(d.get("status") or "")
         if raw_status == "downloading":
             status = DownloadStatus.DOWNLOADING
         elif raw_status == "finished":
@@ -152,26 +185,33 @@ class ProgressEvent:
 
         return cls(
             status=status,
-            downloaded_bytes=d.get("downloaded_bytes"),
-            total_bytes=d.get("total_bytes"),
-            total_bytes_estimate=d.get("total_bytes_estimate"),
-            speed=d.get("speed"),
-            eta=d.get("eta"),
-            elapsed=d.get("elapsed"),
-            fragment_index=d.get("fragment_index"),
-            fragment_count=d.get("fragment_count"),
-            filename=d.get("filename"),
-            tmp_filename=d.get("tmpfilename"),
-            error=str(d.get("error")) if d.get("error") else None,
+            downloaded_bytes=_safe_int(d.get("downloaded_bytes")),
+            total_bytes=_safe_int(d.get("total_bytes")),
+            total_bytes_estimate=_safe_int(d.get("total_bytes_estimate")),
+            speed=_safe_float(d.get("speed")),
+            eta=_safe_float(d.get("eta")),
+            elapsed=_safe_float(d.get("elapsed")),
+            fragment_index=_safe_int(d.get("fragment_index")),
+            fragment_count=_safe_int(d.get("fragment_count")),
+            filename=_safe_str(d.get("filename")),
+            tmp_filename=_safe_str(d.get("tmpfilename")),
+            error=_safe_str(d.get("error")),
         )
 
     @classmethod
-    def from_postprocessor(cls, d: dict[str, Any]) -> ProgressEvent:
-        """Создает `ProgressEvent` из словаря `postprocessor_hooks` yt-dlp."""
+    def from_postprocessor(cls, d: Mapping[str, object]) -> ProgressEvent:
+        """Создает `ProgressEvent` из словаря `postprocessor_hooks` yt-dlp.
+
+        Args:
+            d: Словарь события постпроцессора от yt-dlp.
+
+        Returns:
+            Экземпляр ProgressEvent со статусом POST_PROCESSING.
+        """
         return cls(
             status=DownloadStatus.POST_PROCESSING,
-            postprocessor=d.get("postprocessor"),
-            postprocessor_status=d.get("status"),
+            postprocessor=_safe_str(d.get("postprocessor")),
+            postprocessor_status=_safe_str(d.get("status")),
         )
 
 
@@ -194,13 +234,20 @@ class ProgressBridge:
         throttle_interval: float = DEFAULT_THROTTLE_INTERVAL,
         queue_size: int = DEFAULT_PROGRESS_QUEUE_SIZE,
     ) -> None:
+        """Инициализирует асинхронный мост отслеживания прогресса.
+
+        Args:
+            loop: Активный цикл событий asyncio, в который доставляются события.
+            throttle_interval: Минимальный интервал времени в секундах между событиями загрузки.
+            queue_size: Максимальная емкость очереди событий asyncio.
+        """
         self._loop = loop
         self._throttle_interval = max(0.0, throttle_interval)
         self._queue: asyncio.Queue[ProgressEvent | None] = asyncio.Queue(maxsize=queue_size)
         self._last_download_emit: float = 0.0
         self._closed: bool = False
 
-    def sync_hook(self, progress_dict: dict[str, Any]) -> None:
+    def sync_hook(self, progress_dict: Mapping[str, object]) -> None:
         """Синхронный хук, вызываемый `FileDownloader` yt-dlp из worker thread."""
         if self._closed or self._loop.is_closed():
             return
@@ -217,7 +264,7 @@ class ProgressBridge:
         event = ProgressEvent.from_ytdlp(progress_dict)
         self._push_event(event)
 
-    def sync_postprocessor_hook(self, pp_dict: dict[str, Any]) -> None:
+    def sync_postprocessor_hook(self, pp_dict: Mapping[str, object]) -> None:
         """Синхронный хук, вызываемый `PostProcessor` yt-dlp из worker thread."""
         if self._closed or self._loop.is_closed():
             return

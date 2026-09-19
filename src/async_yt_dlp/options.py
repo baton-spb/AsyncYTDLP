@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from async_yt_dlp._constants import DEFAULT_OUTPUT_TEMPLATE
 from async_yt_dlp._logging import redact_options
@@ -78,7 +77,7 @@ class YTDLPOptions:
     embed_metadata: bool | None = None
     embed_subtitles: bool | None = None
     ffmpeg_location: Path | str | None = None
-    postprocessors: tuple[dict[str, Any], ...] | None = None
+    postprocessors: tuple[dict[str, object], ...] | None = None
 
     # Субтитры и миниатюры
     write_subtitles: bool | None = None
@@ -98,8 +97,8 @@ class YTDLPOptions:
     ignore_errors: bool | None = None
     simulate: bool | None = None
     skip_download: bool | None = None
-    extractor_args: dict[str, Any] | None = None
-    js_runtimes: tuple[str, ...] | list[str] | dict[str, Any] | None = None
+    extractor_args: dict[str, object] | None = None
+    js_runtimes: tuple[str, ...] | list[str] | dict[str, object] | None = None
 
     # Логирование и консольный вывод (по умолчанию выключены для библиотечного использования)
     quiet: bool = True
@@ -107,9 +106,9 @@ class YTDLPOptions:
     verbose: bool = False
 
     # Произвольные низкоуровневые опции yt-dlp (наивысший приоритет)
-    raw_options: dict[str, Any] = field(default_factory=dict)
+    raw_options: dict[str, object] = field(default_factory=dict)
 
-    def to_ytdlp_params(self) -> dict[str, Any]:
+    def to_ytdlp_params(self) -> dict[str, object]:
         """Преобразует типизированные настройки в словарь параметров `params` для `YoutubeDL`.
 
         Автоматически генерирует корректную конфигурацию postprocessors для ffmpeg,
@@ -118,7 +117,7 @@ class YTDLPOptions:
         Returns:
             Словарь аргументов для передачи в `YoutubeDL(params)`.
         """
-        params: dict[str, Any] = {
+        params: dict[str, object] = {
             # Базовые параметры библиотеки
             "quiet": self.quiet,
             "no_warnings": self.no_warnings,
@@ -255,12 +254,12 @@ class YTDLPOptions:
             params["ffmpeg_location"] = str(self.ffmpeg_location)
 
         # Сборка цепочки postprocessors
-        pps: list[dict[str, Any]] = []
+        pps: list[dict[str, object]] = []
         if self.postprocessors:
             pps.extend(dict(pp) for pp in self.postprocessors)
 
         if self.extract_audio:
-            audio_pp: dict[str, Any] = {"key": "FFmpegExtractAudio"}
+            audio_pp: dict[str, object] = {"key": "FFmpegExtractAudio"}
             if self.audio_format:
                 audio_pp["preferredcodec"] = self.audio_format
             if self.audio_quality is not None:
@@ -321,14 +320,14 @@ class YTDLPOptions:
         if other.http_headers:
             merged_headers.update(other.http_headers)
 
-        merged_extractor_args: dict[str, Any] = {}
+        merged_extractor_args: dict[str, object] = {}
         if self.extractor_args:
             merged_extractor_args.update(self.extractor_args)
         if other.extractor_args:
             merged_extractor_args.update(other.extractor_args)
 
         # Объединение списков постпроцессоров
-        merged_pps: tuple[dict[str, Any], ...] | None = None
+        merged_pps: tuple[dict[str, object], ...] | None = None
         if self.postprocessors or other.postprocessors:
             base_pps = list(self.postprocessors or ())
             override_pps = list(other.postprocessors or ())
@@ -470,6 +469,6 @@ class YTDLPOptions:
             raw_options=merged_raw,
         )
 
-    def to_safe_dict(self) -> dict[str, Any]:
+    def to_safe_dict(self) -> dict[str, object]:
         """Возвращает словарь параметров с маскированием паролей и секретов для логирования."""
         return redact_options(self.to_ytdlp_params())

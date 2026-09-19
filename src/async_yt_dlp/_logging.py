@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from collections.abc import Mapping
 from urllib.parse import urlsplit, urlunsplit
 
 from async_yt_dlp._constants import (
@@ -55,7 +55,7 @@ def redact_url(url: str) -> str:
     return url
 
 
-def redact_options(options: dict[str, Any]) -> dict[str, Any]:
+def redact_options(options: Mapping[str, object]) -> dict[str, object]:
     """Создаёт глубокую копию словаря параметров с маскированием чувствительных данных.
 
     Защищает пароли, токены, заголовки авторизации и cookies от случайной
@@ -67,7 +67,7 @@ def redact_options(options: dict[str, Any]) -> dict[str, Any]:
     Returns:
         Новый словарь с замаскированными значениями секретных полей.
     """
-    redacted: dict[str, Any] = {}
+    redacted: dict[str, object] = {}
 
     for key, value in options.items():
         key_lower = str(key).lower()
@@ -80,9 +80,9 @@ def redact_options(options: dict[str, Any]) -> dict[str, Any]:
             continue
 
         # Обработка словарей заголовков (http_headers, custom headers)
-        if isinstance(value, dict):
+        if isinstance(value, Mapping):
             if "header" in key_lower:
-                redacted_headers: dict[str, Any] = {}
+                redacted_headers: dict[str, object] = {}
                 for h_name, h_val in value.items():
                     if str(h_name).lower() in SENSITIVE_HTTP_HEADERS:
                         redacted_headers[h_name] = _REDACTED_STR
@@ -103,7 +103,7 @@ def redact_options(options: dict[str, Any]) -> dict[str, Any]:
             if key_lower in ("cookiesfrombrowser",):
                 redacted[key] = _REDACTED_STR
             else:
-                redacted[key] = [redact_options(v) if isinstance(v, dict) else v for v in value]
+                redacted[key] = [redact_options(v) if isinstance(v, Mapping) else v for v in value]
             continue
 
         redacted[key] = value
@@ -122,6 +122,11 @@ class YTDLPLoggerAdapter:
     """
 
     def __init__(self, target_logger: logging.Logger | None = None) -> None:
+        """Инициализирует адаптер логирования для сообщений yt-dlp.
+
+        Args:
+            target_logger: Экземпляр standard Logger. Если None, используется логгер библиотеки по умолчанию.
+        """
         self._logger = target_logger or logger
 
     def debug(self, msg: str) -> None:

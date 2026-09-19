@@ -12,7 +12,8 @@ import asyncio
 import contextvars
 import os
 import time
-from typing import Any, Protocol, cast
+from collections.abc import Mapping
+from typing import Protocol, cast
 
 from async_yt_dlp._logging import YTDLPLoggerAdapter, logger
 from async_yt_dlp.exceptions import map_ytdlp_error
@@ -30,24 +31,24 @@ class DownloadBackend(Protocol):
     async def extract_info(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         download: bool = False,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Асинхронно извлекает метаданные медиа-ресурса."""
         ...
 
     async def download(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         progress_bridge: ProgressBridge | None = None,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, object], float]:
         """Асинхронно скачивает медиа-ресурс и возвращает `(info_dict, elapsed_seconds)`."""
         ...
 
@@ -70,17 +71,18 @@ class ThreadBackend:
     """
 
     def __init__(self) -> None:
+        """Инициализирует бэкенд выполнения операций yt-dlp в пуле потоков."""
         self._is_closed: bool = False
 
     async def extract_info(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         download: bool = False,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Извлекает словарь метаданных для заданного URL."""
         if self._is_closed:
             raise RuntimeError("ThreadBackend закрыт.")
@@ -105,12 +107,12 @@ class ThreadBackend:
     async def download(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         progress_bridge: ProgressBridge | None = None,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
-    ) -> tuple[dict[str, Any], float]:
+    ) -> tuple[dict[str, object], float]:
         """Скачивает медиа-ресурс и передает события прогресса в `ProgressBridge`."""
         if self._is_closed:
             raise RuntimeError("ThreadBackend закрыт.")
@@ -143,16 +145,16 @@ class ThreadBackend:
     def _sync_extract(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         download: bool,
-        extra_info: dict[str, Any] | None,
+        extra_info: Mapping[str, object] | None,
         job_id: str | None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Синхронная функция извлечения, выполняемая в отдельном потоке."""
         from yt_dlp import YoutubeDL
 
-        opts = dict(params)
+        opts: dict[str, object] = dict(params)
         self._ensure_ffmpeg_location(opts)
 
         # Настройка адаптера логирования, если пользователь не указал свой
@@ -166,21 +168,21 @@ class ThreadBackend:
                 raise RuntimeError(
                     f"Не удалось извлечь метаданные для {url} (yt-dlp вернул пустой результат)"
                 )
-            return cast(dict[str, Any], result)
+            return cast(dict[str, object], result)
 
     def _sync_download(
         self,
         url: str,
-        params: dict[str, Any],
+        params: Mapping[str, object],
         *,
         progress_bridge: ProgressBridge | None,
-        extra_info: dict[str, Any] | None,
+        extra_info: Mapping[str, object] | None,
         job_id: str | None,
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Синхронная функция скачивания, выполняемая в отдельном потоке."""
         from yt_dlp import YoutubeDL
 
-        opts = dict(params)
+        opts: dict[str, object] = dict(params)
         self._ensure_ffmpeg_location(opts)
 
         if "logger" not in opts:
@@ -188,11 +190,11 @@ class ThreadBackend:
 
         # Регистрация хуков прогресса в словарь параметров
         if progress_bridge:
-            existing_progress = list(opts.get("progress_hooks") or [])
+            existing_progress = list(cast(list[object], opts.get("progress_hooks") or []))
             existing_progress.append(progress_bridge.sync_hook)
             opts["progress_hooks"] = existing_progress
 
-            existing_pps = list(opts.get("postprocessor_hooks") or [])
+            existing_pps = list(cast(list[object], opts.get("postprocessor_hooks") or []))
             existing_pps.append(progress_bridge.sync_postprocessor_hook)
             opts["postprocessor_hooks"] = existing_pps
 
@@ -200,10 +202,10 @@ class ThreadBackend:
             result = ydl.extract_info(url, download=True, extra_info=extra_info)
             if result is None:
                 raise RuntimeError(f"Не удалось скачать медиа-ресурс для {url}")
-            return cast(dict[str, Any], result)
+            return cast(dict[str, object], result)
 
     @staticmethod
-    def _ensure_ffmpeg_location(opts: dict[str, Any]) -> None:
+    def _ensure_ffmpeg_location(opts: dict[str, object]) -> None:
         """Автоматически разрешает расположение ffmpeg, если не задано пользователем явно."""
         from async_yt_dlp._dependencies import check_dependencies
 

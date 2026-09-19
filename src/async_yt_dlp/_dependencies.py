@@ -113,6 +113,14 @@ def _inspect_dependencies_cached(custom_ffmpeg_location: str | None = None) -> D
                     break
 
     def _find_windows_candidates(filename: str) -> Path | None:
+        """Ищет исполняемый файл в стандартных каталогах менеджеров пакетов Windows.
+
+        Args:
+            filename: Имя исполняемого файла (например, 'ffmpeg.exe').
+
+        Returns:
+            Абсолютный путь к найденному файлу или None, если файл не найден.
+        """
         if sys.platform != "win32":
             return None
         candidates = [

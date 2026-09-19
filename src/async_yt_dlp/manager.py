@@ -13,7 +13,7 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import TypeVar
 
 from async_yt_dlp._constants import DEFAULT_MAX_CONCURRENCY, DEFAULT_QUEUE_SIZE
 from async_yt_dlp._logging import logger
@@ -39,7 +39,7 @@ class DownloadJob:
     job_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     options: YTDLPOptions = field(default_factory=YTDLPOptions)
     created_at: float = field(default_factory=time.time)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=dict)
 
 
 class DownloadManager:
@@ -57,6 +57,15 @@ class DownloadManager:
         max_concurrency: int = DEFAULT_MAX_CONCURRENCY,
         queue_size: int = DEFAULT_QUEUE_SIZE,
     ) -> None:
+        """Инициализирует менеджер параллельных операций загрузки.
+
+        Args:
+            max_concurrency: Максимальное количество одновременно выполняемых операций.
+            queue_size: Максимальный размер очереди ожидающих операций.
+
+        Raises:
+            ValueError: Если max_concurrency или queue_size меньше 1.
+        """
         if max_concurrency < 1:
             raise ValueError(f"max_concurrency должен быть >= 1, получено: {max_concurrency}")
         if queue_size < 1:
@@ -65,7 +74,7 @@ class DownloadManager:
         self._max_concurrency = max_concurrency
         self._queue_size = queue_size
         self._semaphore = asyncio.Semaphore(max_concurrency)
-        self._active_tasks: set[asyncio.Task[Any]] = set()
+        self._active_tasks: set[asyncio.Task[object]] = set()
         self._waiting_count: int = 0
         self._is_closed: bool = False
         self._shutdown_event = asyncio.Event()

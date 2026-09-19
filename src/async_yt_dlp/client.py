@@ -7,10 +7,11 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from types import TracebackType
+from typing import Self
 
 from async_yt_dlp._constants import (
     DEFAULT_MAX_CONCURRENCY,
@@ -41,54 +42,36 @@ class ClientState(StrEnum):
 
 
 class ErrorPolicy(StrEnum):
-    """Политика обработки ошибок при пакетной загрузке нескольких URL (`download_many`)."""
+    """Политика обработки ошибок при пакетной загрузке (`download_many`)."""
 
     FAIL_FAST = "fail_fast"  # Прерывание всей группы при первой ошибке
-    COLLECT = "collect"  # Сохранение ошибок в результирующем списке
-    SKIP = "skip"  # Игнорирование ошибок, возврат только успешных результатов
+    COLLECT = "collect"  # Сбор результатов и объектов исключений в общий список
+    SKIP = "skip"  # Пропуск неудавшихся загрузок (возвращаются только успешные результаты)
 
 
 class AsyncYTDLP:
-    """Главный асинхронный клиент-обёртка над yt-dlp.
-
-    Пример базового использования:
-    ```python
-    async with AsyncYTDLP(max_concurrency=4) as ytdlp:
-        # Извлечение метаданных
-        info = await ytdlp.extract_info("https://...")
-        print(info.title, info.duration)
-
-        # Скачивание файла
-        result = await ytdlp.download("https://...")
-        print(result.filepath)
-    ```
-
-    Отслеживание прогресса через async iterator:
-    ```python
-    async with AsyncYTDLP() as ytdlp:
-        async for event in ytdlp.download_with_progress("https://..."):
-            print(event.status, event.percent, event.speed_str)
-    ```
-    """
+    """Главный асинхронный клиент для управления операциями yt-dlp."""
 
     def __init__(
         self,
         *,
+        options: YTDLPOptions | None = None,
+        default_options: YTDLPOptions | None = None,
         max_concurrency: int = DEFAULT_MAX_CONCURRENCY,
         queue_size: int = DEFAULT_QUEUE_SIZE,
-        default_options: YTDLPOptions | None = None,
         backend: DownloadBackend | None = None,
     ) -> None:
         """Инициализирует клиент `AsyncYTDLP`.
 
         Args:
-            max_concurrency: Максимальное количество одновременных рабочих потоков yt-dlp.
-            queue_size: Максимальный размер очереди задач при пиковой нагрузке.
-            default_options: Базовые параметры yt-dlp, применяемые ко всем операциям клиента.
-            backend: Пользовательский бэкенд выполнения (по умолчанию `ThreadBackend`).
+            options: Базовые параметры yt-dlp по умолчанию для всех операций клиента.
+            default_options: Альтернативный параметр для options (обратная совместимость).
+            max_concurrency: Максимальное количество одновременных операций yt-dlp.
+            queue_size: Максимальный размер очереди ожидания слота параллельности.
+            backend: Кастомный бэкенд выполнения. Если не задан, используется `ThreadBackend`.
         """
-        self._default_options = default_options or YTDLPOptions()
-        self._backend = backend or ThreadBackend()
+        self._default_options = options or default_options or YTDLPOptions()
+        self._backend: DownloadBackend = backend or ThreadBackend()
         self._manager = DownloadManager(
             max_concurrency=max_concurrency,
             queue_size=queue_size,
@@ -112,7 +95,12 @@ class AsyncYTDLP:
         self._state = ClientState.RUNNING
         return self
 
-    async def __aexit__(self, *exc_info: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_val: BaseException | None = None,
+        exc_tb: TracebackType | None = None,
+    ) -> None:
         """Выход из контекстного менеджера с автоматическим вызовом graceful close()."""
         await self.close()
 
@@ -158,7 +146,7 @@ class AsyncYTDLP:
         *,
         download: bool = False,
         options: YTDLPOptions | None = None,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
     ) -> MediaInfo:
         """Извлекает нормализованные метаданные медиа-ресурса или плейлиста.
@@ -184,7 +172,8 @@ class AsyncYTDLP:
         effective_opts = self._default_options.merge(options)
         params = effective_opts.to_ytdlp_params()
 
-        async def _op() -> dict[str, Any]:
+        async def _op() -> dict[str, object]:
+            """Выполняет вызов бэкенда для извлечения метаданных."""
             return await self._backend.extract_info(
                 validated_url,
                 params,
@@ -201,8 +190,8 @@ class AsyncYTDLP:
         url: str,
         *,
         options: YTDLPOptions | None = None,
-        on_progress: Callable[[ProgressEvent], Any] | None = None,
-        extra_info: dict[str, Any] | None = None,
+        on_progress: Callable[[ProgressEvent], object] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
         _bridge: ProgressBridge | None = None,
     ) -> DownloadResult:
@@ -239,6 +228,7 @@ class AsyncYTDLP:
         if on_progress is not None and _bridge is None:
 
             async def _consume_progress() -> None:
+                """Считывает события прогресса из моста и передает их в пользовательский callback."""
                 async for event in bridge:
                     try:
                         res = on_progress(event)
@@ -251,7 +241,8 @@ class AsyncYTDLP:
                 _consume_progress(), name=f"progress-{job_id or 'direct'}"
             )
 
-        async def _op() -> tuple[dict[str, Any], float]:
+        async def _op() -> tuple[dict[str, object], float]:
+            """Выполняет вызов бэкенда для скачивания медиа-ресурса."""
             return await self._backend.download(
                 validated_url,
                 params,
@@ -269,18 +260,24 @@ class AsyncYTDLP:
         media_info = MediaInfo.from_ytdlp(raw_info)
 
         # Определение финального пути к скачанному файлу
-        filepath_str = (
+        filepath_str: str | None = None
+        raw_filepath = (
             raw_info.get("filepath") or raw_info.get("_filename") or raw_info.get("filename")
         )
-        if (
-            not filepath_str
-            and "requested_downloads" in raw_info
-            and raw_info["requested_downloads"]
-        ):
-            req_first = raw_info["requested_downloads"][0]
-            filepath_str = (
-                req_first.get("filepath") or req_first.get("_filename") or req_first.get("filename")
-            )
+        if raw_filepath:
+            filepath_str = str(raw_filepath)
+        elif raw_info.get("requested_downloads"):
+            req_downloads = raw_info["requested_downloads"]
+            if isinstance(req_downloads, list) and req_downloads:
+                req_first = req_downloads[0]
+                if isinstance(req_first, Mapping):
+                    rf = (
+                        req_first.get("filepath")
+                        or req_first.get("_filename")
+                        or req_first.get("filename")
+                    )
+                    if rf:
+                        filepath_str = str(rf)
 
         final_path = (
             validate_path(filepath_str)
@@ -301,7 +298,7 @@ class AsyncYTDLP:
         *,
         options: YTDLPOptions | None = None,
         throttle_interval: float = DEFAULT_THROTTLE_INTERVAL,
-        extra_info: dict[str, Any] | None = None,
+        extra_info: Mapping[str, object] | None = None,
         job_id: str | None = None,
     ) -> AsyncIterator[ProgressEvent]:
         """Асинхронный генератор событий прогресса скачивания.
@@ -371,6 +368,7 @@ class AsyncYTDLP:
         results: list[DownloadResult | AsyncYTDLPError | None] = [None] * len(urls)
 
         async def _worker(idx: int, target_url: str) -> None:
+            """Выполняет скачивание отдельного URL в группе задач."""
             try:
                 res = await self.download(target_url, options=options)
                 results[idx] = res

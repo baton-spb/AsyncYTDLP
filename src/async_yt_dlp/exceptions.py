@@ -24,12 +24,20 @@ class AsyncYTDLPError(Exception):
         url: str | None = None,
         job_id: str | None = None,
     ) -> None:
+        """Инициализирует базовое исключение библиотеки async-yt-dlp.
+
+        Args:
+            message: Текстовое описание ошибки.
+            url: URL медиа-ресурса, при обработке которого произошла ошибка.
+            job_id: Идентификатор задачи в очереди.
+        """
         super().__init__(message)
         self.message = message
         self.url = url
         self.job_id = job_id
 
     def __str__(self) -> str:
+        """Возвращает строковое представление ошибки с контекстом URL и job_id."""
         parts: list[str] = [self.message]
         if self.url:
             parts.append(f"[url={self.url}]")

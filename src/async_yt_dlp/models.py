@@ -7,9 +7,37 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
+
+
+def _safe_str(val: object) -> str | None:
+    """Безопасно преобразует значение в строку или возвращает None."""
+    if val is None:
+        return None
+    return str(val)
+
+
+def _safe_int(val: object) -> int | None:
+    """Безопасно преобразует значение в int или возвращает None."""
+    if val is None:
+        return None
+    try:
+        return int(float(str(val)))
+    except ValueError, TypeError:
+        return None
+
+
+def _safe_float(val: object) -> float | None:
+    """Безопасно преобразует значение в float или возвращает None."""
+    if val is None:
+        return None
+    try:
+        return float(str(val))
+    except ValueError, TypeError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -23,13 +51,21 @@ class ThumbnailInfo:
     resolution: str | None = None
 
     @classmethod
-    def from_ytdlp(cls, d: dict[str, Any]) -> ThumbnailInfo:
+    def from_ytdlp(cls, d: Mapping[str, object]) -> ThumbnailInfo:
+        """Создает экземпляр ThumbnailInfo из словаря yt-dlp.
+
+        Args:
+            d: Словарь метаданных миниатюры от yt-dlp.
+
+        Returns:
+            Объект ThumbnailInfo с заполненными полями.
+        """
         return cls(
             url=str(d.get("url") or ""),
-            width=d.get("width"),
-            height=d.get("height"),
-            id=d.get("id"),
-            resolution=d.get("resolution"),
+            width=_safe_int(d.get("width")),
+            height=_safe_int(d.get("height")),
+            id=_safe_str(d.get("id")),
+            resolution=_safe_str(d.get("resolution")),
         )
 
 
@@ -42,11 +78,19 @@ class SubtitleInfo:
     name: str | None = None
 
     @classmethod
-    def from_ytdlp(cls, d: dict[str, Any]) -> SubtitleInfo:
+    def from_ytdlp(cls, d: Mapping[str, object]) -> SubtitleInfo:
+        """Создает экземпляр SubtitleInfo из словаря yt-dlp.
+
+        Args:
+            d: Словарь дорожки субтитров от yt-dlp.
+
+        Returns:
+            Объект SubtitleInfo с заполненными полями.
+        """
         return cls(
-            ext=d.get("ext"),
-            url=d.get("url"),
-            name=d.get("name"),
+            ext=_safe_str(d.get("ext")),
+            url=_safe_str(d.get("url")),
+            name=_safe_str(d.get("name")),
         )
 
 
@@ -98,37 +142,45 @@ class FormatInfo:
     audio_channels: int | None = None
     has_video: bool = False
     has_audio: bool = False
-    raw_data: dict[str, Any] = field(default_factory=dict, repr=False)
+    raw_data: dict[str, object] = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_ytdlp(cls, f: dict[str, Any]) -> FormatInfo:
-        vcodec = f.get("vcodec")
-        acodec = f.get("acodec")
+    def from_ytdlp(cls, f: Mapping[str, object]) -> FormatInfo:
+        """Создает экземпляр FormatInfo из словаря формата yt-dlp.
+
+        Args:
+            f: Словарь формата от yt-dlp.
+
+        Returns:
+            Объект FormatInfo с заполненными полями.
+        """
+        vcodec = _safe_str(f.get("vcodec"))
+        acodec = _safe_str(f.get("acodec"))
         has_video = bool(vcodec and vcodec != "none")
         has_audio = bool(acodec and acodec != "none")
 
         return cls(
             format_id=str(f.get("format_id") or ""),
-            ext=f.get("ext"),
-            width=f.get("width"),
-            height=f.get("height"),
-            fps=float(f["fps"]) if f.get("fps") is not None else None,
+            ext=_safe_str(f.get("ext")),
+            width=_safe_int(f.get("width")),
+            height=_safe_int(f.get("height")),
+            fps=_safe_float(f.get("fps")),
             vcodec=vcodec,
             acodec=acodec,
-            filesize=f.get("filesize"),
-            filesize_approx=f.get("filesize_approx"),
-            tbr=float(f["tbr"]) if f.get("tbr") is not None else None,
-            vbr=float(f["vbr"]) if f.get("vbr") is not None else None,
-            abr=float(f["abr"]) if f.get("abr") is not None else None,
-            asr=f.get("asr"),
-            format_note=f.get("format_note"),
-            protocol=f.get("protocol"),
-            resolution=f.get("resolution"),
-            dynamic_range=f.get("dynamic_range"),
-            audio_channels=f.get("audio_channels"),
+            filesize=_safe_int(f.get("filesize")),
+            filesize_approx=_safe_int(f.get("filesize_approx")),
+            tbr=_safe_float(f.get("tbr")),
+            vbr=_safe_float(f.get("vbr")),
+            abr=_safe_float(f.get("abr")),
+            asr=_safe_int(f.get("asr")),
+            format_note=_safe_str(f.get("format_note")),
+            protocol=_safe_str(f.get("protocol")),
+            resolution=_safe_str(f.get("resolution")),
+            dynamic_range=_safe_str(f.get("dynamic_range")),
+            audio_channels=_safe_int(f.get("audio_channels")),
             has_video=has_video,
             has_audio=has_audio,
-            raw_data=f,
+            raw_data=dict(f),
         )
 
 
@@ -174,24 +226,30 @@ class MediaInfo:
     thumbnails: tuple[ThumbnailInfo, ...] = ()
 
     # Исходный неотфильтрованный словарь yt-dlp
-    raw_data: dict[str, Any] = field(default_factory=dict, repr=False)
+    raw_data: dict[str, object] = field(default_factory=dict, repr=False)
 
     @property
     def duration_seconds(self) -> int | None:
         """Длительность в целых секундах."""
         return int(self.duration) if self.duration is not None else None
 
-    def to_dict(self, *, remove_private_keys: bool = False) -> dict[str, Any]:
+    def to_dict(self, *, remove_private_keys: bool = False) -> dict[str, object]:
         """Возвращает безопасное JSON-serializable представление словаря метаданных.
 
         Использует `YoutubeDL.sanitize_info()` для исключения несериализуемых типов,
         генераторов и циклических ссылок.
+
+        Args:
+            remove_private_keys: Удалять ли приватные внутренние ключи yt-dlp.
+
+        Returns:
+            Очищенный словарь метаданных.
         """
         try:
             from yt_dlp import YoutubeDL
 
             return cast(
-                dict[str, Any],
+                dict[str, object],
                 YoutubeDL.sanitize_info(self.raw_data, remove_private_keys=remove_private_keys),
             )
         except Exception:
@@ -206,8 +264,15 @@ class MediaInfo:
             }
 
     @classmethod
-    def from_ytdlp(cls, d: dict[str, Any]) -> MediaInfo:
-        """Фабричный метод построения `MediaInfo` из словаря `info_dict` yt-dlp."""
+    def from_ytdlp(cls, d: Mapping[str, object]) -> MediaInfo:
+        """Фабричный метод построения `MediaInfo` из словаря `info_dict` yt-dlp.
+
+        Args:
+            d: Словарь метаданных медиа-ресурса от yt-dlp.
+
+        Returns:
+            Экземпляр MediaInfo с нормализованными данными.
+        """
         is_pl = d.get("_type") in ("playlist", "multi_video") or "entries" in d
 
         # Обработка вложенных элементов плейлиста
@@ -215,70 +280,89 @@ class MediaInfo:
         if is_pl and "entries" in d and d["entries"] is not None:
             raw_entries = d["entries"]
             parsed_entries: list[MediaInfo] = []
-            for item in raw_entries:
-                if isinstance(item, dict):
-                    parsed_entries.append(cls.from_ytdlp(item))
+            if isinstance(raw_entries, list):
+                for item in raw_entries:
+                    if isinstance(item, Mapping):
+                        parsed_entries.append(cls.from_ytdlp(item))
             entries_tuple = tuple(parsed_entries)
 
         # Форматы
         formats_list: list[FormatInfo] = []
-        for f in d.get("formats") or []:
-            if isinstance(f, dict):
-                formats_list.append(FormatInfo.from_ytdlp(f))
+        raw_formats = d.get("formats")
+        if isinstance(raw_formats, list):
+            for f in raw_formats:
+                if isinstance(f, Mapping):
+                    formats_list.append(FormatInfo.from_ytdlp(f))
 
         # Выбранные форматы для скачивания
         req_formats_list: list[FormatInfo] | None = None
-        if d.get("requested_formats"):
+        raw_req_formats = d.get("requested_formats")
+        if isinstance(raw_req_formats, list):
             req_formats_list = [
-                FormatInfo.from_ytdlp(rf) for rf in d["requested_formats"] if isinstance(rf, dict)
+                FormatInfo.from_ytdlp(rf) for rf in raw_req_formats if isinstance(rf, Mapping)
             ]
 
         # Субтитры
         subs_dict: dict[str, tuple[SubtitleInfo, ...]] = {}
-        if "subtitles" in d and isinstance(d["subtitles"], dict):
-            for lang, tracks in d["subtitles"].items():
+        raw_subs = d.get("subtitles")
+        if isinstance(raw_subs, Mapping):
+            for lang, tracks in raw_subs.items():
                 if isinstance(tracks, list):
-                    subs_dict[lang] = tuple(
-                        SubtitleInfo.from_ytdlp(t) for t in tracks if isinstance(t, dict)
+                    subs_dict[str(lang)] = tuple(
+                        SubtitleInfo.from_ytdlp(t) for t in tracks if isinstance(t, Mapping)
                     )
 
         # Миниатюры
         thumbs_list: list[ThumbnailInfo] = []
-        for t in d.get("thumbnails") or []:
-            if isinstance(t, dict):
-                thumbs_list.append(ThumbnailInfo.from_ytdlp(t))
+        raw_thumbs = d.get("thumbnails")
+        if isinstance(raw_thumbs, list):
+            for t in raw_thumbs:
+                if isinstance(t, Mapping):
+                    thumbs_list.append(ThumbnailInfo.from_ytdlp(t))
+
+        categories_val = d.get("categories")
+        categories_tuple: tuple[str, ...] = (
+            tuple(str(c) for c in categories_val)
+            if isinstance(categories_val, (list, tuple))
+            else ()
+        )
+
+        tags_val = d.get("tags")
+        tags_tuple: tuple[str, ...] = (
+            tuple(str(t) for t in tags_val) if isinstance(tags_val, (list, tuple)) else ()
+        )
 
         return cls(
             id=str(d.get("id") or ""),
             title=str(d.get("title") or ""),
-            description=d.get("description"),
-            duration=float(d["duration"]) if d.get("duration") is not None else None,
-            uploader=d.get("uploader"),
-            uploader_id=d.get("uploader_id"),
-            channel=d.get("channel"),
-            channel_id=d.get("channel_id"),
-            channel_url=d.get("channel_url"),
+            description=_safe_str(d.get("description")),
+            duration=_safe_float(d.get("duration")),
+            uploader=_safe_str(d.get("uploader")),
+            uploader_id=_safe_str(d.get("uploader_id")),
+            channel=_safe_str(d.get("channel")),
+            channel_id=_safe_str(d.get("channel_id")),
+            channel_url=_safe_str(d.get("channel_url")),
             webpage_url=str(d.get("webpage_url") or d.get("original_url") or ""),
-            thumbnail=d.get("thumbnail"),
-            ext=d.get("ext"),
-            filesize=d.get("filesize"),
-            filesize_approx=d.get("filesize_approx"),
-            upload_date=d.get("upload_date"),
-            view_count=d.get("view_count"),
-            like_count=d.get("like_count"),
-            live_status=d.get("live_status"),
-            age_limit=d.get("age_limit"),
-            categories=tuple(d.get("categories") or ()),
-            tags=tuple(d.get("tags") or ()),
+            thumbnail=_safe_str(d.get("thumbnail")),
+            ext=_safe_str(d.get("ext")),
+            filesize=_safe_int(d.get("filesize")),
+            filesize_approx=_safe_int(d.get("filesize_approx")),
+            upload_date=_safe_str(d.get("upload_date")),
+            view_count=_safe_int(d.get("view_count")),
+            like_count=_safe_int(d.get("like_count")),
+            live_status=_safe_str(d.get("live_status")),
+            age_limit=_safe_int(d.get("age_limit")),
+            categories=categories_tuple,
+            tags=tags_tuple,
             is_playlist=is_pl,
             entries=entries_tuple,
-            playlist_count=d.get("playlist_count")
+            playlist_count=_safe_int(d.get("playlist_count"))
             or (len(entries_tuple) if entries_tuple else None),
             formats=tuple(formats_list),
             requested_formats=tuple(req_formats_list) if req_formats_list else None,
             subtitles=subs_dict,
             thumbnails=tuple(thumbs_list),
-            raw_data=d,
+            raw_data=dict(d),
         )
 
 
