@@ -6,42 +6,23 @@
 [![Typing: Typed](https://img.shields.io/badge/typing-typed-green.svg)](https://peps.python.org/pep-0561/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-<p align="center">
-  <b>Высокопроизводительная, строго типизированная асинхронная Python-библиотека обёртка над yt-dlp.</b>
-</p>
+Строго типизированная асинхронная обёртка над [yt-dlp](https://github.com/yt-dlp/yt-dlp) для Python 3.11+.
 
-<p align="center">
-  <a href="#возможности">Возможности</a> •
-  <a href="#установка">Установка</a> •
-  <a href="#быстрый-старт">Быстрый старт</a> •
-  <a href="#архитектура">Архитектура</a> •
-  <a href="#документация">Документация</a> •
-  <a href="#лицензия">Лицензия</a>
-</p>
-
----
-
-`async-yt-dlp` — это универсальный асинхронный SDK / adapter layer над мощным синхронным ядром `yt-dlp`. Библиотека спроектирована для использования в любых современных async-приложениях:
-- Telegram-ботах (aiogram, telethon, pyrogram)
-- Discord-ботах (discord.py)
-- Веб-сервисах и API (FastAPI, Litestar, Aiohttp)
-- Фоновых воркерах и очередях (Celery, ARQ, Taskiq)
-
-Библиотека **не зависит** от Telegram или каких-либо веб-фреймворков и является полностью самостоятельным проектом.
+Все блокирующие операции yt-dlp выполняются через `asyncio.to_thread`, поэтому event loop не блокируется. Подходит для Telegram-ботов, Discord-ботов, веб-сервисов (FastAPI, Litestar, aiohttp) и фоновых очередей задач.
 
 ---
 
 ## Возможности
 
--  **100% Async Native**: Все блокирующие операции сети, диска и ffmpeg вынесены в системные потоки через `asyncio.to_thread`. Event loop никогда не блокируется.
--  **Строгая типизация**: Модели `MediaInfo`, `FormatInfo`, `DownloadResult`, `ProgressEvent` (PEP 561 `py.typed`, совместимо со строгим режимом `mypy`).
--  **Потокобезопасность**: Изолированный экземпляр `YoutubeDL` на каждую операцию исключает состояние гонки и порчу сессий.
--  **Плавный стриминг прогресса**: Асинхронный генератор `download_with_progress` с адаптивным троттлингом (защита от перегрузки интерфейса и спама).
--  **Контроль параллельности**: Встроенный `DownloadManager` на базе `asyncio.Semaphore` с ограничением емкости очереди (backpressure).
--  **Структурированная конкурентность**: Поддержка `asyncio.TaskGroup` в пакетной загрузке `download_many`.
--  **Честная модель отмены**: Корректная обработка `task.cancel()`, таймаутов `asyncio.timeout` и graceful shutdown.
--  **Безопасность данных**: Автоматическая маскировка паролей, токенов, cookies и прокси в логах; защита от SSRF и протокола `file://`.
--  **Проверка зависимостей**: Встроенная диагностика окружения (`check_dependencies`) для проверки `yt-dlp`, `ffmpeg`, `ffprobe` и JS-движков.
+- **Асинхронность**: блокирующие вызовы yt-dlp вынесены в `asyncio.to_thread`, event loop свободен.
+- **Типизация**: модели `MediaInfo`, `FormatInfo`, `DownloadResult`, `ProgressEvent` — frozen dataclass со `slots=True`. PEP 561 `py.typed`, совместимо с `mypy --strict`.
+- **Потокобезопасность**: каждая операция получает изолированный экземпляр `YoutubeDL`.
+- **Стриминг прогресса**: асинхронный генератор `download_with_progress` с адаптивным троттлингом.
+- **Контроль параллельности**: `DownloadManager` на базе `asyncio.Semaphore` с ограничением очереди (backpressure).
+- **Отмена и таймауты**: корректная обработка `task.cancel()`, `asyncio.timeout` и graceful shutdown.
+- **Объектная конфигурация**: `FormatSelector` (fluent-построитель форматов), `OutputTemplate` (построитель шаблонов имён файлов), `VideoContainer` (выбор контейнера).
+- **Маскировка данных**: пароли, токены, cookies и прокси автоматически скрываются в логах.
+- **Диагностика окружения**: `check_dependencies()` проверяет наличие `yt-dlp`, `ffmpeg`, `ffprobe` и JS-движков.
 
 ---
 
@@ -53,14 +34,14 @@
 # Базовая установка:
 pip install async-yt-dlp
 
-# С опциональной интеграцией с async-ffmpeg:
+# С интеграцией aio-ffmpeg (постобработка видео):
 pip install "async-yt-dlp[ffmpeg]"
 
-# Полный набор (async-ffmpeg + сетевые акселераторы curl-cffi, websockets и др.):
+# Полный набор (aio-ffmpeg + curl-cffi, websockets и др.):
 pip install "async-yt-dlp[full]"
 ```
 
-Или с использованием `uv`:
+Или через `uv`:
 ```bash
 uv add async-yt-dlp
 ```
@@ -69,58 +50,61 @@ uv add async-yt-dlp
 
 ## Быстрый старт
 
-### 1. Извлечение метаданных видео или плейлиста
+### 1. Извлечение метаданных
+
 ```python
 import asyncio
 from async_yt_dlp import AsyncYTDLP
 
 
-async def main():
+async def main() -> None:
     async with AsyncYTDLP() as ytdlp:
         info = await ytdlp.extract_info("https://www.youtube.com/watch?v=BaW_jenozKc")
-        print(f"🎬 {info.title}")
-        print(f"👤 Автор: {info.uploader}")
-        print(f"⏱ Длительность: {info.duration_seconds} сек.")
+        print(f"Название: {info.title}")
+        print(f"Автор: {info.uploader}")
+        print(f"Длительность: {info.duration_seconds} сек.")
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
-### 2. Скачивание видео с настройками качества
+### 2. Скачивание видео
+
 ```python
 import asyncio
 from pathlib import Path
-from async_yt_dlp import AsyncYTDLP, YTDLPOptions
+from async_yt_dlp import AsyncYTDLP, YTDLPOptions, FormatSelector, OutputTemplate, VideoContainer
 
 
-async def main():
+async def main() -> None:
     options = YTDLPOptions(
-        format="bestvideo[height<=720]+bestaudio/best[height<=720]",
+        format=FormatSelector.preset_720p(container=VideoContainer.MP4),
+        container=VideoContainer.MP4,
         output_path=Path("./downloads"),
-        output_template="%(title)s.%(ext)s",
+        output_template=OutputTemplate.title_only(),
     )
 
     async with AsyncYTDLP(default_options=options) as ytdlp:
         result = await ytdlp.download("https://www.youtube.com/watch?v=BaW_jenozKc")
-        print(f"✅ Файл сохранен: {result.filepath} ({result.file_size} байт)")
+        print(f"Файл: {result.filepath} ({result.file_size} байт)")
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
-### 3. Стриминг прогресса загрузки в реальном времени
+### 3. Стриминг прогресса загрузки
+
 ```python
 import asyncio
 from async_yt_dlp import AsyncYTDLP, DownloadStatus
 
 
-async def main():
+async def main() -> None:
     async with AsyncYTDLP() as ytdlp:
-        url = "https://www.youtube.com/watch?v=BaW_jenozKc"
-
-        async for event in ytdlp.download_with_progress(url, throttle_interval=0.5):
+        async for event in ytdlp.download_with_progress(
+            "https://www.youtube.com/watch?v=BaW_jenozKc",
+            throttle_interval=0.5,
+        ):
             if event.status == DownloadStatus.DOWNLOADING:
                 print(
                     f"\rЗагрузка: {event.percent:.1f}% | {event.speed_str} | ETA: {event.eta_str}",
@@ -130,77 +114,87 @@ async def main():
                 print("\nГотово!")
 
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
+```
+
+---
+
+## Объектная конфигурация
+
+### FormatSelector — построитель строки `--format`
+
+```python
+from async_yt_dlp import FormatSelector, VideoContainer
+
+# Готовые пресеты:
+FormatSelector.preset_720p()                              # 720p видео + аудио
+FormatSelector.preset_1080p(container=VideoContainer.MP4) # 1080p, приоритет mp4
+FormatSelector.preset_audio_only("m4a")                   # только аудио
+FormatSelector.preset_max_quality()                       # максимальное качество
+
+# Ручная сборка:
+fmt = FormatSelector.video().max_height(480).ext("mp4").merge(FormatSelector.audio())
+```
+
+### OutputTemplate — построитель шаблона имени файла
+
+```python
+from async_yt_dlp import OutputTemplate
+
+# Готовые пресеты:
+OutputTemplate.title_only()         # "%(title)s.%(ext)s"
+OutputTemplate.title_and_id()       # "%(title)s [%(id)s].%(ext)s"
+OutputTemplate.dated()              # "%(upload_date)s - %(title)s.%(ext)s"
+OutputTemplate.playlist_folder()    # "%(playlist_title)s/%(playlist_index)02d - %(title)s.%(ext)s"
+OutputTemplate.channel_folder()     # "%(uploader)s/%(upload_date)s - %(title)s.%(ext)s"
+
+# Ручная сборка через fluent-API:
+tpl = OutputTemplate().channel().dir().title().ext()  # "%(channel)s/%(title)s.%(ext)s"
+
+# Операторы:
+tpl = OutputTemplate().channel() / OutputTemplate.title_only()  # то же самое
+```
+
+### VideoContainer — гарантия формата выходного файла
+
+```python
+from async_yt_dlp import VideoContainer, YTDLPOptions
+
+# Гарантирует .mp4 на выходе (ffmpeg remux без перекодирования):
+options = YTDLPOptions(container=VideoContainer.MP4)
+# Доступные: MP4, MKV, WEBM, MOV, AVI, FLV, TS
 ```
 
 ---
 
 ## Архитектура
 
+```mermaid
+flowchart TD
+    App["Приложение<br/>(Telegram, Web, CLI, Bot)"] --> Client["AsyncYTDLP<br/>фасад, lifecycle, API"]
+    Client --> Manager["DownloadManager<br/>Semaphore, backpressure"]
+    Manager --> Backend["ThreadBackend<br/>asyncio.to_thread"]
+    Backend --> YTDLP["yt_dlp.YoutubeDL<br/>синхронное ядро"]
 ```
-┌───────────────────────────────────────────────┐
-│     Приложение (Telegram, Web, CLI, Bot)      │
-└───────────────────────┬───────────────────────┘
-                        │
-            ┌───────────▼───────────┐
-            │       AsyncYTDLP      │  ← Фасад, API, Lifecycle
-            └───────────┬───────────┘
-                        │
-            ┌───────────▼───────────┐
-            │    DownloadManager    │  ← Semaphore, Backpressure, Shutdown
-            └───────────┬───────────┘
-                        │
-            ┌───────────▼───────────┐
-            │     ThreadBackend     │  ← asyncio.to_thread, изолированный
-            └───────────┬───────────┘     экземпляр YoutubeDL на операцию
-                        │
-            ┌───────────▼───────────┐
-            │   yt_dlp.YoutubeDL    │  ← Синхронный движок yt-dlp
-            └───────────────────────┘
-```
-
-Подробное описание архитектуры доступно в документе [docs/architecture.md](docs/architecture.md).
-
----
-
-## Документация
-
-Подробные руководства на русском языке находятся в каталоге `docs/`:
-
-1. [Быстрый старт](docs/getting-started.md)
-2. [Архитектура и дизайн](docs/architecture.md)
-3. [Справочник публичного API](docs/api.md)
-4. [Конфигурация YTDLPOptions](docs/configuration.md)
-5. [Управление параллельностью](docs/concurrency.md)
-6. [Модель отмены и таймауты](docs/cancellation.md)
-7. [Отслеживание прогресса](docs/progress.md)
-8. [Иерархия исключений](docs/errors.md)
-9. [Безопасность и санитизация](docs/security.md)
-10. [Производительность и оптимизация](docs/performance.md)
-11. [Развертывание и Docker](docs/deployment.md)
-12. [Руководство для разработчиков](docs/development.md)
-13. [Тестирование](docs/testing.md)
-14. [Устранение неполадок](docs/troubleshooting.md)
-15. [Миграция с синхронного yt-dlp](docs/migration.md)
 
 ---
 
 ## Примеры использования
 
-В каталоге `examples/` представлены готовые примеры кода:
-- [Простое извлечение информации](examples/simple_extract.py)
-- [Скачивание файла](examples/simple_download.py)
-- [Отображение прогресса](examples/progress.py)
-- [Работа с плейлистами](examples/playlist.py)
-- [Извлечение аудио и MP3 конвертация](examples/audio_extraction.py)
-- [Продвинутые параметры](examples/custom_options.py)
-- [Отмена задач и таймауты](examples/cancellation.py)
-- [Пакетная параллельная загрузка](examples/concurrency.py)
-- [Интеграция с Telegram-ботом на aiogram 3.x](examples/integrations/telegram_aiogram.py)
+В каталоге [`examples/`](examples/) представлены готовые примеры:
+
+- [`simple_extract.py`](examples/simple_extract.py) — извлечение метаданных
+- [`simple_download.py`](examples/simple_download.py) — скачивание файла
+- [`progress.py`](examples/progress.py) — отображение прогресса
+- [`playlist.py`](examples/playlist.py) — работа с плейлистами
+- [`audio_extraction.py`](examples/audio_extraction.py) — извлечение аудио
+- [`postprocessing_pipeline.py`](examples/postprocessing_pipeline.py) — постобработка через aio-ffmpeg
+- [`custom_options.py`](examples/custom_options.py) — настройка параметров
+- [`cancellation.py`](examples/cancellation.py) — отмена задач и таймауты
+- [`concurrency.py`](examples/concurrency.py) — параллельная загрузка
 
 ---
 
 ## Лицензия
 
-Проект распространяется под лицензией MIT. Подробнее см. в файле [LICENSE](LICENSE).
+Проект распространяется под лицензией MIT. См. файл [LICENSE](LICENSE).
