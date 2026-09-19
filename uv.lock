@@ -9,7 +9,7 @@ resolution-markers = [
 
 [[package]]
 name = "aio-ffmpeg"
-version = "0.1.0"
+version = "0.1.1"
 source = { directory = "../AsyncFFmpeg" }
 
 [package.metadata]
@@ -89,7 +89,7 @@ wheels = [
 
 [[package]]
 name = "async-yt-dlp"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "yt-dlp" },
