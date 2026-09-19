@@ -244,61 +244,185 @@ class FormatSelector:
         """Строковое представление для отладки."""
         return f"FormatSelector({self.build()!r})"
 
-    # --- Готовые пресеты ---
+    # --- Готовые пресеты и фабрики ---
 
     @classmethod
-    def preset_1080p(cls, container: VideoContainer | str | None = None) -> FormatSelector:
-        """Пресет Full HD 1080p: лучшее видео до 1080p + лучшее аудио с падением на лучший общий поток.
+    def resolution(
+        cls,
+        height: int,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Универсальный селектор для любого разрешения (144p .. 4320p/8K).
 
         Args:
+            height: Высота кадра в пикселях (144, 240, 360, 480, 720, 1080, 1440, 2160, 4320 и т.д.).
             container: Опциональное ограничение контейнера (например, VideoContainer.MP4).
+            fps: Ограничение максимальной частоты кадров (например, 30 или 60).
+            exact: Требовать ли строго заданное разрешение (height={height}) вместо ограничения сверху (height<={height}).
+
+        Returns:
+            Сконфигурированный экземпляр FormatSelector.
         """
+        def _make_video(h: int, exact_match: bool, c: str | None = None) -> FormatSelector:
+            v = cls.video()
+            v = v.exact_height(h) if exact_match else v.max_height(h)
+            if fps is not None:
+                v = v.max_fps(fps)
+            if c is not None:
+                v = v.ext(c)
+            return v
+
         if container is not None:
             c = str(container).lstrip(".")
-            return (
-                cls.video()
-                .max_height(1080)
-                .ext(c)
+            builder = (
+                _make_video(height, exact, c)
                 .merge(cls.audio())
-                .fallback(cls.video().max_height(1080).merge(cls.audio()))
+                .fallback(_make_video(height, exact).merge(cls.audio()))
                 .fallback(cls.any_stream().ext(c))
-                .fallback(cls.any_stream().max_height(1080))
-                .fallback(cls.any_stream())
             )
-        return (
-            cls.video()
-            .max_height(1080)
-            .merge(cls.audio())
-            .fallback(cls.any_stream().max_height(1080))
-            .fallback(cls.any_stream())
-        )
+            if exact:
+                return builder.fallback(cls.any_stream().exact_height(height)).fallback(cls.any_stream())
+            return builder.fallback(cls.any_stream().max_height(height)).fallback(cls.any_stream())
+
+        builder = _make_video(height, exact).merge(cls.audio())
+        if exact:
+            return builder.fallback(cls.any_stream().exact_height(height)).fallback(cls.any_stream())
+        return builder.fallback(cls.any_stream().max_height(height)).fallback(cls.any_stream())
 
     @classmethod
-    def preset_720p(cls, container: VideoContainer | str | None = None) -> FormatSelector:
-        """Пресет HD 720p: лучшее видео до 720p + лучшее аудио с падением на лучший общий поток.
+    def preset_144p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет 144p: минимальное качество видео."""
+        return cls.resolution(144, container=container, fps=fps, exact=exact)
 
-        Args:
-            container: Опциональное ограничение контейнера (например, VideoContainer.MP4).
-        """
-        if container is not None:
-            c = str(container).lstrip(".")
-            return (
-                cls.video()
-                .max_height(720)
-                .ext(c)
-                .merge(cls.audio())
-                .fallback(cls.video().max_height(720).merge(cls.audio()))
-                .fallback(cls.any_stream().ext(c))
-                .fallback(cls.any_stream().max_height(720))
-                .fallback(cls.any_stream())
-            )
-        return (
-            cls.video()
-            .max_height(720)
-            .merge(cls.audio())
-            .fallback(cls.any_stream().max_height(720))
-            .fallback(cls.any_stream())
-        )
+    @classmethod
+    def preset_240p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет 240p: ультра-низкое качество."""
+        return cls.resolution(240, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_360p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет 360p: стандартное мобильное SD качество."""
+        return cls.resolution(360, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_480p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет 480p: качественное SD (DVD-разрешение)."""
+        return cls.resolution(480, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_720p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет HD 720p: лучшее видео до 720p + лучшее аудио."""
+        return cls.resolution(720, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_1080p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет Full HD 1080p: лучшее видео до 1080p + лучшее аудио."""
+        return cls.resolution(1080, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_1440p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет QHD 2K (1440p): высокое разрешение."""
+        return cls.resolution(1440, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_2k(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Псевдоним для preset_1440p (2K)."""
+        return cls.preset_1440p(container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_2160p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет 4K UHD (2160p): сверхвысокая четкость."""
+        return cls.resolution(2160, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_4k(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Псевдоним для preset_2160p (4K)."""
+        return cls.preset_2160p(container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_4320p(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Пресет 8K UHD (4320p): максимальное Ultra HD разрешение."""
+        return cls.resolution(4320, container=container, fps=fps, exact=exact)
+
+    @classmethod
+    def preset_8k(
+        cls,
+        container: VideoContainer | str | None = None,
+        *,
+        fps: int | float | None = None,
+        exact: bool = False,
+    ) -> FormatSelector:
+        """Псевдоним для preset_4320p (8K)."""
+        return cls.preset_4320p(container=container, fps=fps, exact=exact)
 
     @classmethod
     def preset_audio_only(cls, codec: str = "m4a") -> FormatSelector:
@@ -308,6 +432,19 @@ class FormatSelector:
             codec: Желаемый формат аудио (например, 'm4a', 'mp3', 'opus').
         """
         return cls.audio().ext(codec).fallback(cls.audio()).fallback(cls.any_stream())
+
+    @classmethod
+    def preset_best_audio(cls) -> FormatSelector:
+        """Пресет наилучшего доступного аудиопотока любого формата."""
+        return cls.audio().fallback(cls.any_stream())
+
+    @classmethod
+    def preset_worst(cls, container: VideoContainer | str | None = None) -> FormatSelector:
+        """Пресет наименьшего размера/качества (для экономии трафика или превью)."""
+        if container is not None:
+            c = str(container).lstrip(".")
+            return cls.worst().ext(c).fallback(cls.worst())
+        return cls.worst()
 
     @classmethod
     def preset_compatibility(cls) -> FormatSelector:
@@ -356,3 +493,4 @@ class FormatSelector:
                 .fallback(cls.any_stream())
             )
         return cls.video().merge(cls.audio()).fallback(cls.any_stream())
+

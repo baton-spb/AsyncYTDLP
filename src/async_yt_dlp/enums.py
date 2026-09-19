@@ -63,9 +63,13 @@ class AudioCodec(StrEnum):
 class Resolution:
     """Пресеты стандартных медиа-разрешений в формате `(ширина, высота)`."""
 
+    LOW_144P: Final[tuple[int, int]] = (256, 144)
+    LOW_240P: Final[tuple[int, int]] = (426, 240)
     SD_360P: Final[tuple[int, int]] = (640, 360)
     SD_480P: Final[tuple[int, int]] = (854, 480)
     HD_720P: Final[tuple[int, int]] = (1280, 720)
     FHD_1080P: Final[tuple[int, int]] = (1920, 1080)
     QHD_1440P: Final[tuple[int, int]] = (2560, 1440)
     UHD_4K: Final[tuple[int, int]] = (3840, 2160)
+    UHD_8K: Final[tuple[int, int]] = (7680, 4320)
+

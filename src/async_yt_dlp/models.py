@@ -233,6 +233,94 @@ class MediaInfo:
         """Длительность в целых секундах."""
         return int(self.duration) if self.duration is not None else None
 
+    def get_available_resolutions(self) -> list[int]:
+        """Возвращает отсортированный по убыванию список доступных разрешений видео (высота кадра).
+
+        Например: [2160, 1440, 1080, 720, 480, 360, 240, 144].
+        Идеально подходит для формирования кнопок выбора качества в ботах и UI.
+        """
+        heights = {
+            f.height
+            for f in self.formats
+            if f.has_video and f.height is not None and f.height > 0
+        }
+        return sorted(heights, reverse=True)
+
+    def get_video_formats(
+        self, height: int | None = None, container: str | None = None
+    ) -> list[FormatInfo]:
+        """Возвращает список видеопотоков, опционально отфильтрованных по высоте и/или контейнеру."""
+        res: list[FormatInfo] = []
+        for f in self.formats:
+            if not f.has_video:
+                continue
+            if height is not None and f.height != height:
+                continue
+            if container is not None and f.ext != str(container).lstrip("."):
+                continue
+            res.append(f)
+        return res
+
+    def get_audio_formats(self) -> list[FormatInfo]:
+        """Возвращает список доступных аудиопотоков (без видео), отсортированных по убыванию битрейта."""
+        res = [f for f in self.formats if f.has_audio and not f.has_video]
+        return sorted(res, key=lambda f: f.tbr or f.abr or 0.0, reverse=True)
+
+    def get_best_video_format(
+        self, height: int | None = None, container: str | None = None
+    ) -> FormatInfo | None:
+        """Возвращает наилучший доступный видеопоток для указанного разрешения."""
+        candidates = self.get_video_formats(height=height, container=container)
+        if not candidates and container is not None:
+            candidates = self.get_video_formats(height=height)
+        if not candidates:
+            return None
+        return max(candidates, key=lambda f: f.tbr or f.vbr or 0.0)
+
+    def get_best_audio_format(self) -> FormatInfo | None:
+        """Возвращает наилучший доступный аудиопоток."""
+        audios = self.get_audio_formats()
+        return audios[0] if audios else None
+
+    def estimate_size(self, height: int | None = None) -> int | None:
+        """Оценивает суммарный размер файла (в байтах) для скачивания в указанном разрешении.
+
+        Суммирует размер лучшего видеопотока и лучшего аудиопотока, если видеопоток раздельный.
+        """
+        v_fmt = self.get_best_video_format(height=height)
+        if v_fmt is None:
+            return None
+
+        v_size = v_fmt.filesize or v_fmt.filesize_approx
+        if v_size is None and v_fmt.tbr and self.duration:
+            v_size = int((v_fmt.tbr * 1000 / 8) * self.duration)
+
+        if v_fmt.has_audio:
+            return v_size
+
+        a_fmt = self.get_best_audio_format()
+        if a_fmt is not None:
+            a_size = a_fmt.filesize or a_fmt.filesize_approx
+            if a_size is None and a_fmt.tbr and self.duration:
+                a_size = int((a_fmt.tbr * 1000 / 8) * self.duration)
+            if a_size and v_size:
+                return v_size + a_size
+
+        return v_size
+
+    def estimate_size_str(self, height: int | None = None) -> str:
+        """Возвращает оценку размера файла в человекочитаемом виде (например, '24.50 MiB' или 'N/A')."""
+        size = self.estimate_size(height=height)
+        if size is None:
+            return "N/A"
+        if size < 1024:
+            return f"{size} B"
+        if size < 1024 * 1024:
+            return f"{size / 1024:.2f} KiB"
+        if size < 1024 * 1024 * 1024:
+            return f"{size / (1024 * 1024):.2f} MiB"
+        return f"{size / (1024 * 1024 * 1024):.2f} GiB"
+
     def to_dict(self, *, remove_private_keys: bool = False) -> dict[str, object]:
         """Возвращает безопасное JSON-serializable представление словаря метаданных.
 
@@ -262,6 +350,7 @@ class MediaInfo:
                 "webpage_url": self.webpage_url,
                 "is_playlist": self.is_playlist,
             }
+
 
     @classmethod
     def from_ytdlp(cls, d: Mapping[str, object]) -> MediaInfo:

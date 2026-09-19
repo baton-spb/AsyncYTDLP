@@ -86,6 +86,43 @@ def test_presets() -> None:
     p_max = FormatSelector.preset_max_quality()
     assert str(p_max) == "bestvideo*+bestaudio*/best"
 
+    # Проверка новых пресетов всех стандартных разрешений
+    p_144 = FormatSelector.preset_144p()
+    assert "height<=144" in str(p_144)
+
+    p_240 = FormatSelector.preset_240p()
+    assert "height<=240" in str(p_240)
+
+    p_360 = FormatSelector.preset_360p()
+    assert "height<=360" in str(p_360)
+
+    p_480 = FormatSelector.preset_480p()
+    assert "height<=480" in str(p_480)
+
+    p_2k = FormatSelector.preset_2k()
+    assert "height<=1440" in str(p_2k)
+
+    p_4k = FormatSelector.preset_4k("mp4", fps=60)
+    assert "height<=2160" in str(p_4k)
+    assert "fps<=60" in str(p_4k)
+    assert "ext=mp4" in str(p_4k)
+
+    p_8k = FormatSelector.preset_8k()
+    assert "height<=4320" in str(p_8k)
+
+    p_best_a = FormatSelector.preset_best_audio()
+    assert "bestaudio*/best" in str(p_best_a)
+
+    p_worst = FormatSelector.preset_worst("mp4")
+    assert "worst[ext=mp4]/worst" in str(p_worst)
+
+
+def test_resolution_factory_exact() -> None:
+    """Проверяет работу фабрики resolution с exact=True."""
+    res_sel = FormatSelector.resolution(720, exact=True)
+    assert "height=720" in str(res_sel)
+    assert "height<=720" not in str(res_sel)
+
 
 def test_options_format_selector_integration() -> None:
     """Проверяет прозрачную передачу FormatSelector в YTDLPOptions."""
@@ -94,3 +131,4 @@ def test_options_format_selector_integration() -> None:
 
     params = opts.to_ytdlp_params()
     assert params["format"] == str(selector)
+

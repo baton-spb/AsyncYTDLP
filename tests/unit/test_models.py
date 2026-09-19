@@ -82,3 +82,40 @@ def test_download_result_properties(tmp_path: Path, sample_video_info: dict[str,
     assert res.exists is True
     assert res.file_size == len(b"test video binary content")
     assert res.elapsed == 1.25
+
+
+def test_media_info_resolution_helpers(sample_video_info: dict[str, Any]):
+    info = MediaInfo.from_ytdlp(sample_video_info)
+
+    # Доступные разрешения
+    resolutions = info.get_available_resolutions()
+    assert isinstance(resolutions, list)
+    assert len(resolutions) > 0
+    # Проверяем, что отсортированы по убыванию
+    assert resolutions == sorted(resolutions, reverse=True)
+
+    # Видео и аудио форматы
+    video_fmts = info.get_video_formats()
+    assert all(f.has_video for f in video_fmts)
+
+    audio_fmts = info.get_audio_formats()
+    assert all(f.has_audio and not f.has_video for f in audio_fmts)
+
+    # Лучший видео и аудио формат
+    best_v = info.get_best_video_format()
+    assert best_v is not None
+    assert best_v.has_video
+
+    best_a = info.get_best_audio_format()
+    assert best_a is not None
+    assert best_a.has_audio
+
+    # Оценка размера
+    est_size = info.estimate_size()
+    assert est_size is not None
+    assert est_size > 0
+
+    est_str = info.estimate_size_str()
+    assert any(unit in est_str for unit in ("B", "KiB", "MiB", "GiB"))
+
+
