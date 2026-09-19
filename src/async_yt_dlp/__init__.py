@@ -15,6 +15,13 @@ from async_yt_dlp._logging import redact_options, redact_url
 from async_yt_dlp._validation import validate_path, validate_url
 from async_yt_dlp.backend import DownloadBackend, ThreadBackend
 from async_yt_dlp.client import AsyncYTDLP, ClientState, ErrorPolicy
+from async_yt_dlp.enums import (
+    AudioCodec,
+    AudioFormat,
+    Resolution,
+    VideoCodec,
+    VideoContainer,
+)
 from async_yt_dlp.exceptions import (
     AsyncYTDLPError,
     CancellationError,
@@ -53,6 +60,8 @@ from async_yt_dlp.progress import (
 __all__ = [
     "AsyncYTDLP",
     "AsyncYTDLPError",
+    "AudioCodec",
+    "AudioFormat",
     "CancellationError",
     "ClientState",
     "CompressToSize",
@@ -78,10 +87,13 @@ __all__ = [
     "ProgressBridge",
     "ProgressEvent",
     "QueueFullError",
+    "Resolution",
     "SubtitleInfo",
     "ThreadBackend",
     "ThumbnailInfo",
     "ValidationError",
+    "VideoCodec",
+    "VideoContainer",
     "YTDLPOptions",
     "__version__",
     "check_dependencies",

@@ -14,6 +14,7 @@ from pathlib import Path
 
 from async_yt_dlp._constants import DEFAULT_OUTPUT_TEMPLATE
 from async_yt_dlp._logging import redact_options
+from async_yt_dlp.enums import AudioFormat, VideoContainer
 from async_yt_dlp.format import FormatSelector
 
 
@@ -70,10 +71,10 @@ class YTDLPOptions:
 
     # Постобработка
     extract_audio: bool | None = None
-    audio_format: str | None = None  # mp3, m4a, flac, opus, wav, aac, best
+    audio_format: AudioFormat | str | None = None  # mp3, m4a, flac, opus, wav, aac, best
     audio_quality: str | int | None = None  # 0-10 или битрейт (например, "192K")
-    remux_video: str | None = None  # mp4, mkv, webm и др.
-    recode_video: str | None = None
+    remux_video: VideoContainer | str | None = None  # mp4, mkv, webm и др.
+    recode_video: VideoContainer | str | None = None
     embed_thumbnail: bool | None = None
     embed_metadata: bool | None = None
     embed_subtitles: bool | None = None
@@ -108,6 +109,43 @@ class YTDLPOptions:
 
     # Произвольные низкоуровневые опции yt-dlp (наивысший приоритет)
     raw_options: dict[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Выполняет строгую валидацию диапазонов числовых параметров."""
+        if self.socket_timeout is not None and self.socket_timeout <= 0:
+            raise ValueError(
+                f"Параметр socket_timeout должен быть > 0 секунд, получено: {self.socket_timeout}"
+            )
+        if self.retries is not None and self.retries < 0:
+            raise ValueError(f"Параметр retries должен быть >= 0, получено: {self.retries}")
+        if self.fragment_retries is not None and self.fragment_retries < 0:
+            raise ValueError(
+                f"Параметр fragment_retries должен быть >= 0, получено: {self.fragment_retries}"
+            )
+        if self.extractor_retries is not None and self.extractor_retries < 0:
+            raise ValueError(
+                f"Параметр extractor_retries должен быть >= 0, получено: {self.extractor_retries}"
+            )
+        if self.file_access_retries is not None and self.file_access_retries < 0:
+            raise ValueError(
+                f"Параметр file_access_retries должен быть >= 0, получено: {self.file_access_retries}"
+            )
+        if self.rate_limit is not None and self.rate_limit <= 0:
+            raise ValueError(
+                f"Параметр rate_limit должен быть > 0 байт/с, получено: {self.rate_limit}"
+            )
+        if self.throttled_rate_limit is not None and self.throttled_rate_limit <= 0:
+            raise ValueError(
+                f"Параметр throttled_rate_limit должен быть > 0 байт/с, получено: {self.throttled_rate_limit}"
+            )
+        if self.concurrent_fragments is not None and self.concurrent_fragments < 1:
+            raise ValueError(
+                f"Параметр concurrent_fragments должен быть >= 1, получено: {self.concurrent_fragments}"
+            )
+        if isinstance(self.audio_quality, int) and not (0 <= self.audio_quality <= 10):
+            raise ValueError(
+                f"Численный параметр audio_quality (VBR) должен быть в диапазоне от 0 до 10, получено: {self.audio_quality}"
+            )
 
     def to_ytdlp_params(self) -> dict[str, object]:
         """Преобразует типизированные настройки в словарь параметров `params` для `YoutubeDL`.
@@ -262,16 +300,16 @@ class YTDLPOptions:
         if self.extract_audio:
             audio_pp: dict[str, object] = {"key": "FFmpegExtractAudio"}
             if self.audio_format:
-                audio_pp["preferredcodec"] = self.audio_format
+                audio_pp["preferredcodec"] = str(self.audio_format)
             if self.audio_quality is not None:
                 audio_pp["preferredquality"] = str(self.audio_quality)
             pps.append(audio_pp)
 
         if self.remux_video:
-            pps.append({"key": "FFmpegVideoRemuxer", "preferedformat": self.remux_video})
+            pps.append({"key": "FFmpegVideoRemuxer", "preferedformat": str(self.remux_video)})
 
         if self.recode_video:
-            pps.append({"key": "FFmpegVideoConvertor", "preferedformat": self.recode_video})
+            pps.append({"key": "FFmpegVideoConvertor", "preferedformat": str(self.recode_video)})
 
         if self.embed_thumbnail:
             pps.append({"key": "EmbedThumbnail"})

@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
+from async_yt_dlp.enums import AudioCodec, AudioFormat, VideoCodec, VideoContainer
 from async_yt_dlp.exceptions import DependencyError, PostProcessingError
 from async_yt_dlp.models import DownloadResult
 
@@ -75,17 +76,28 @@ class CompressToSize:
 
     Attributes:
         target_size_mb: Целевой размер итогового файла в мегабайтах (например, 50 для Telegram).
-        video_codec: Видеокодек для сжатия (по умолчанию 'libx264').
-        audio_codec: Аудиокодек (по умолчанию 'aac').
+        video_codec: Видеокодек для сжатия (по умолчанию VideoCodec.H264 или 'libx264').
+        audio_codec: Аудиокодек (по умолчанию AudioCodec.AAC или 'aac').
         audio_bitrate_kbps: Битрейт аудиопотока в кбит/с (по умолчанию 128).
         preset: Пресет кодировщика (по умолчанию 'medium').
     """
 
     target_size_mb: float
-    video_codec: str = "libx264"
-    audio_codec: str = "aac"
+    video_codec: VideoCodec | str = VideoCodec.H264
+    audio_codec: AudioCodec | str = AudioCodec.AAC
     audio_bitrate_kbps: int = 128
     preset: str = "medium"
+
+    def __post_init__(self) -> None:
+        """Валидирует диапазоны параметров сжатия."""
+        if self.target_size_mb <= 0:
+            raise ValueError(
+                f"Параметр target_size_mb должен быть > 0 МБ, получено: {self.target_size_mb}"
+            )
+        if self.audio_bitrate_kbps <= 0:
+            raise ValueError(
+                f"Параметр audio_bitrate_kbps должен быть > 0 кбит/с, получено: {self.audio_bitrate_kbps}"
+            )
 
     async def run(
         self,
@@ -208,14 +220,26 @@ class PostDownloadPipeline:
         self._remux_ext: str | None = None
         self._compress_target_mb: float | None = None
 
-    def scale(self, width: int, height: int) -> Self:
+    def scale(self, width: int | tuple[int, int], height: int | None = None) -> Self:
         """Задает масштабирование видео в целевое разрешение.
 
         Args:
-            width: Ширина кадра.
-            height: Высота кадра.
+            width: Ширина кадра или кортеж (ширина, высота), например `Resolution.HD_720P`.
+            height: Высота кадра (необязательна, если передан кортеж в `width`).
         """
-        self._scale_dims = (width, height)
+        if isinstance(width, tuple):
+            w, h = width
+        elif height is not None:
+            w, h = width, height
+        else:
+            raise ValueError(
+                "Необходимо указать высоту height или передать кортеж (ширина, высота)"
+            )
+
+        if w <= 0 or h <= 0:
+            raise ValueError(f"Размеры кадра должны быть строго положительными, получено: {w}x{h}")
+
+        self._scale_dims = (w, h)
         return self
 
     def normalize_audio(self, target_i: float = -16.0) -> Self:
@@ -238,16 +262,25 @@ class PostDownloadPipeline:
         """Задает интервал обрезки медиафайла.
 
         Args:
-            start: Начало фрагмента в секундах.
+            start: Начало фрагмента в секундах (>= 0).
             end: Конец фрагмента в секундах.
-            duration: Длительность фрагмента в секундах.
+            duration: Длительность фрагмента в секундах (> 0).
         """
+        if start is not None and start < 0:
+            raise ValueError(f"Параметр start должен быть >= 0 секунд, получено: {start}")
+        if duration is not None and duration <= 0:
+            raise ValueError(f"Параметр duration должен быть > 0 секунд, получено: {duration}")
+        if start is not None and end is not None and end <= start:
+            raise ValueError(
+                f"Конечная метка end ({end}) должна быть больше начальной start ({start})"
+            )
+
         self._trim_range = (start, end, duration)
         return self
 
     def video_codec(
         self,
-        codec: str = "libx264",
+        codec: VideoCodec | str = VideoCodec.H264,
         *,
         crf: int | None = 23,
         preset: str | None = "medium",
@@ -255,53 +288,70 @@ class PostDownloadPipeline:
         """Настраивает видеокодек и параметры сжатия.
 
         Args:
-            codec: Имя видеокодека (например, 'libx264', 'libx265', 'copy').
-            crf: Фактор постоянного качества (CRF).
+            codec: Имя или перечисление видеокодека (например, VideoCodec.H264, 'libx264', 'copy').
+            crf: Фактор постоянного качества (CRF, диапазон 0..51).
             preset: Пресет кодирования (например, 'fast', 'medium', 'slow').
         """
-        self._video_codec = codec
+        if crf is not None and not (0 <= crf <= 51):
+            raise ValueError(f"Параметр crf должен быть в диапазоне от 0 до 51, получено: {crf}")
+
+        self._video_codec = str(codec)
         self._crf = crf
         self._preset = preset
         return self
 
-    def audio_codec(self, codec: str = "aac", *, bitrate: str = "192k") -> Self:
+    def audio_codec(
+        self,
+        codec: AudioCodec | str = AudioCodec.AAC,
+        *,
+        bitrate: str = "192k",
+    ) -> Self:
         """Настраивает параметры аудиокодека.
 
         Args:
-            codec: Имя аудиокодека (например, 'aac', 'libmp3lame', 'copy').
+            codec: Имя или перечисление аудиокодека (например, AudioCodec.AAC, 'libmp3lame', 'copy').
             bitrate: Битрейт аудиопотока (например, '192k', '320k').
         """
-        self._audio_codec = codec
+        self._audio_codec = str(codec)
         self._audio_bitrate = bitrate
         return self
 
-    def extract_audio(self, codec: str = "mp3", *, bitrate: str = "320k") -> Self:
+    def extract_audio(
+        self,
+        codec: AudioFormat | AudioCodec | str = AudioFormat.MP3,
+        *,
+        bitrate: str = "320k",
+    ) -> Self:
         """Переводит конвейер в режим чистого извлечения аудиодорожки без видео.
 
         Args:
-            codec: Целевой формат/кодек аудио ('mp3', 'aac', 'm4a', 'flac').
+            codec: Целевой формат или кодек аудио (например, AudioFormat.MP3, 'mp3', 'flac').
             bitrate: Битрейт аудиопотока.
         """
         self._extract_audio_mode = True
-        self._audio_codec = codec
+        self._audio_codec = str(codec)
         self._audio_bitrate = bitrate
         return self
 
-    def remux(self, container: str = "mp4") -> Self:
+    def remux(self, container: VideoContainer | str = VideoContainer.MP4) -> Self:
         """Включает быструю смену контейнера (stream copy) без перекодирования.
 
         Args:
-            container: Целевое расширение контейнера (например, 'mp4', 'mkv').
+            container: Целевой контейнер или расширение (например, VideoContainer.MP4, 'mkv').
         """
-        self._remux_ext = container.lstrip(".")
+        self._remux_ext = str(container).lstrip(".")
         return self
 
     def compress_to_size(self, target_size_mb: float) -> Self:
         """Задает целевое сжатие файла под лимит размера в МБ.
 
         Args:
-            target_size_mb: Максимальный размер в мегабайтах.
+            target_size_mb: Максимальный размер в мегабайтах (должен быть > 0).
         """
+        if target_size_mb <= 0:
+            raise ValueError(
+                f"Параметр target_size_mb должен быть > 0 МБ, получено: {target_size_mb}"
+            )
         self._compress_target_mb = target_size_mb
         return self
 
