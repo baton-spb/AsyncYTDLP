@@ -136,15 +136,15 @@ asyncio.run(main())
 from async_yt_dlp import FormatSelector, VideoContainer
 
 # Универсальный выбор любого разрешения:
-FormatSelector.resolution(720, container=VideoContainer.MP4)
-FormatSelector.resolution(1080, container=VideoContainer.MP4, fps=60)
+FormatSelector.resolution(720)
+FormatSelector.resolution(1080, fps=60)
 
 # Готовые пресеты (144p .. 4K/8K):
-FormatSelector.preset_720p(container=VideoContainer.MP4)  # 720p HD
-FormatSelector.preset_1080p(container=VideoContainer.MP4) # 1080p Full HD
-FormatSelector.preset_4k(container=VideoContainer.MP4)    # 4K UHD
-FormatSelector.preset_audio_only("mp3")                   # только аудио (mp3, m4a, flac)
-FormatSelector.preset_max_quality()                       # максимальное качество
+FormatSelector.preset_720p()   # 720p HD
+FormatSelector.preset_1080p()  # 1080p Full HD
+FormatSelector.preset_4k()     # 4K UHD
+FormatSelector.preset_audio_only("mp3") # только аудио (mp3, m4a, flac)
+FormatSelector.preset_max_quality()     # максимальное качество
 
 # Ручная сборка (fluent builder):
 fmt = FormatSelector.video().max_height(480).ext("mp4").merge(FormatSelector.audio())
@@ -178,6 +178,27 @@ from async_yt_dlp import VideoContainer, YTDLPOptions
 options = YTDLPOptions(container=VideoContainer.MP4)
 # Доступные: MP4, MKV, WEBM, MOV, AVI, FLV, TS
 ```
+
+### Конвейер загрузки и принцип DRY (Don't Repeat Yourself)
+
+Библиотека строго разделяет задачи на два этапа конвейера:
+1. **Сетевой уровень (`FormatSelector`)**: отвечает **за выбор стримов** на удаленном сервере (разрешение, частота кадров, битрейт).
+2. **Файловый уровень (`YTDLPOptions.container`)**: отвечает **за итоговый файл на диске** (быстрое слияние видео/аудио и ремуксинг FFmpeg в целевой `.mp4`).
+
+Не дублируйте `container` в обоих местах — используйте каноничный паттерн:
+
+```python
+# ✅ Рекомендуемый лаконичный код:
+options = YTDLPOptions(
+    format=FormatSelector.resolution(720), # ТОЛЬКО качество/высота
+    container=VideoContainer.MP4,          # ТОЛЬКО формат итогового файла
+    output_path=Path("./downloads"),
+)
+```
+
+> [!NOTE]
+> На YouTube видеопотоки высокого качества (1080p, 2K, 4K) почти всегда хранятся в WebM (VP9/AV1). Разделение позволяет скачать поток максимального качества в WebM и прозрачно упаковать его в `.mp4` на диске.
+
 
 ---
 

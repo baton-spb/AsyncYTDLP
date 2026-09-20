@@ -70,6 +70,8 @@ def test_postprocessors_generation():
     audio_pp = next(p for p in pps if p["key"] == "FFmpegExtractAudio")
     assert audio_pp["preferredcodec"] == "mp3"
     assert audio_pp["preferredquality"] == "192K"
+    assert params["merge_output_format"] == "mp4"
+    assert params["remuxvideo"] == "mp4"
 
 
 def test_raw_options_priority():

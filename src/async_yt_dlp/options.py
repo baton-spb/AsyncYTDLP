@@ -319,6 +319,7 @@ class YTDLPOptions:
 
         target_container = self.container if self.container is not None else self.remux_video
         if target_container:
+            params["merge_output_format"] = str(target_container)
             params["remuxvideo"] = str(target_container)
             pps.append({"key": "FFmpegVideoRemuxer", "preferedformat": str(target_container)})
 

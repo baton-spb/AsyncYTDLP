@@ -76,7 +76,9 @@ from async_yt_dlp import (
 
 async def main() -> None:
     options = YTDLPOptions(
-        format=FormatSelector.preset_720p(container=VideoContainer.MP4),
+        # 1. Сетевой уровень: выбираем только качество/разрешение стрима с сервера
+        format=FormatSelector.preset_720p(),
+        # 2. Файловый уровень: гарантируем расширение и формат .mp4 на диске через FFmpeg
         container=VideoContainer.MP4,
         output_path=Path("./downloads"),
         output_template=OutputTemplate.title_only(),
@@ -93,6 +95,15 @@ async def main() -> None:
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+> [!TIP]
+> **Принцип DRY и этапы конвейера скачивания:**
+> Не дублируйте `container` одновременно в `FormatSelector` и в `YTDLPOptions`!
+> - `FormatSelector` отвечает **за сетевые потоки** (качество, высота кадра, битрейт, кодеки на удаленном сервере).
+> - `YTDLPOptions(container=...)` отвечает **за итоговый локальный файл** (сборка и быстрый FFmpeg-ремуксинг в целевой `.mp4` на диске).
+> 
+> Если указать `container` в `YTDLPOptions`, библиотека сама скачает наилучшие потоки (даже если видео на сервере хранится в WebM/VP9, а аудио в Opus) и автоматически упакует их в единый `.mp4` на выходе.
+
 
 ---
 

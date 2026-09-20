@@ -33,16 +33,16 @@ FormatSelector.resolution(1080, exact=True)
 
 #### Готовые пресеты качества
 ```python
-# Стандартная линейка разрешений YouTube:
-FormatSelector.preset_144p(container=VideoContainer.MP4)
-FormatSelector.preset_240p(container=VideoContainer.MP4)
-FormatSelector.preset_360p(container=VideoContainer.MP4)
-FormatSelector.preset_480p(container=VideoContainer.MP4)
-FormatSelector.preset_720p(container=VideoContainer.MP4)   # HD
-FormatSelector.preset_1080p(container=VideoContainer.MP4)  # Full HD
-FormatSelector.preset_1440p(container=VideoContainer.MP4)  # 2K (или preset_2k)
-FormatSelector.preset_2160p(container=VideoContainer.MP4)  # 4K UHD (или preset_4k)
-FormatSelector.preset_4320p(container=VideoContainer.MP4)  # 8K UHD (или preset_8k)
+# Стандартная линейка разрешений YouTube (container опционален, по умолчанию лучший стрим):
+FormatSelector.preset_144p()
+FormatSelector.preset_240p()
+FormatSelector.preset_360p()
+FormatSelector.preset_480p()
+FormatSelector.preset_720p()   # HD
+FormatSelector.preset_1080p()  # Full HD
+FormatSelector.preset_1440p()  # 2K (или preset_2k)
+FormatSelector.preset_2160p()  # 4K UHD (или preset_4k)
+FormatSelector.preset_4320p()  # 8K UHD (или preset_8k)
 
 # Специальные пресеты:
 FormatSelector.preset_max_quality()          # Максимальное доступное качество
@@ -51,20 +51,6 @@ FormatSelector.preset_best_audio()           # Лучший доступный �
 FormatSelector.preset_audio_only("mp3")      # Только аудио в заданном формате
 FormatSelector.preset_compatibility()        # H.264 + AAC для старых плееров
 FormatSelector.preset_telegram(max_size_mb=50) # С лимитом на вес файла для Telegram
-```
-
-#### Ручная сборка (fluent builder)
-```python
-options = YTDLPOptions(
-    format=(
-        FormatSelector.video()
-        .max_height(720)
-        .ext("mp4")
-        .merge(FormatSelector.audio().ext("m4a"))
-    ),
-    format_sort=["res:720", "fps:60"],
-    format_sort_force=True,
-)
 ```
 
 #### Динамический опрос разрешений и оценка размеров для ботов
@@ -81,6 +67,64 @@ for res in resolutions:
     size_str = info.estimate_size_str(res)  # Например, "~62.01 MiB"
     print(f"Кнопка: {res}p ({size_str})")
 ```
+
+---
+
+### Разделение ответственности и конвейер загрузки (принцип DRY)
+
+Частая ошибка разработчиков — указание `container` одновременно в `FormatSelector` и в `YTDLPOptions`:
+
+```python
+# ❌ ИЗБЫТОЧНО (нарушает принцип DRY):
+options = YTDLPOptions(
+    format=FormatSelector.preset_720p(container=VideoContainer.MP4),
+    container=VideoContainer.MP4,
+)
+```
+
+В конвейере скачивания медиа библиотека разделяет задачи на два независимых этапа:
+
+```mermaid
+flowchart LR
+    subgraph S1 ["Этап 1: Сетевой уровень (FormatSelector)"]
+        direction TB
+        CDN["YouTube / Media CDN"] -->|"Выбор стримов (--format)"| Streams["Видеопоток + Аудиопоток<br/>(разрешение, кодек, битрейт)"]
+    end
+    subgraph S2 ["Этап 2: Файловый уровень (YTDLPOptions.container)"]
+        direction TB
+        Streams -->|"FFmpeg Merger & Remuxer"| Final["Итоговый файл на диске<br/>(.mp4, .mkv, .webm)"]
+    end
+```
+
+#### Сравнение этапов и зон ответственности
+
+| Параметр | Где задаётся | Уровень абстракции | Что делает | Когда использовать |
+|---|---|---|---|---|
+| `FormatSelector.preset_720p()` / `FormatSelector.resolution(720)` | `options.format` | **Сетевой уровень** | Выбирает наилучшие потоки видео и звука с сервера (по высоте, битрейту, fps) | **Всегда** для выбора качества загрузки |
+| `YTDLPOptions(container=VideoContainer.MP4)` | `options.container` | **Файловый уровень** | Гарантирует расширение и контейнер `.mp4` локального файла на диске (быстрый ремуксинг через FFmpeg) | **Всегда**, когда приложению или боту нужен гарантированный формат (например, MP4) |
+| `FormatSelector.resolution(720, container=VideoContainer.MP4)` | `options.format` | **Сетевой уровень** | Принудительно ищет на сервере только нативные MP4-стримы | **Только если** на сервере отсутствует FFmpeg и ремуксинг невозможен |
+
+#### Рекомендуемый каноничный паттерн (чистый DRY):
+
+```python
+# ✅ КАНОНИЧНЫЙ КОД ПО DRY:
+options = YTDLPOptions(
+    # Выбираем ТОЛЬКО качество видео:
+    format=FormatSelector.resolution(720),  # или FormatSelector.preset_720p()
+    # Задаем ТОЛЬКО формат итогового файла:
+    container=VideoContainer.MP4,
+    output_path=Path("./downloads"),
+    output_template=OutputTemplate.title_only(),
+)
+```
+
+> [!IMPORTANT]
+> На YouTube видеопотоки высокого качества (1080p, 2K, 4K) и аудиопотоки с максимальным битрейтом практически всегда хранятся в контейнерах WebM (кодеки VP9, AV1, Opus).
+> 
+> Если указать `container=VideoContainer.MP4` в `FormatSelector`, yt-dlp будет пытаться найти нативный MP4 на стороне YouTube, которого может не существовать в заданном разрешении, либо он будет иметь худший битрейт.
+> 
+> Оставляя `FormatSelector` отвечать только за разрешение (`format=FormatSelector.resolution(720)`), а `container=VideoContainer.MP4` передавая в `YTDLPOptions`, вы получаете **максимальное качество видео и звука**, упакованное локальным FFmpeg в чистый и совместимый `.mp4`.
+
 
 
 ### Пути, шаблоны имен и контейнер файлов
